@@ -401,10 +401,12 @@ with tab3:
 
     if not current_df.empty:
 
-        st.metric("Players", len(current_df))
-        st.metric("Matches", len(df))
-        st.metric("Avg ELO", int(current_df["elo"].mean()))
+        col1, col2, col3 = st.columns(3)
 
+        col1.metric("Players", len(current_df))
+        col2.metric("Matches", len(df))
+        col3.metric("Avg ELO", int(current_df["elo"].mean()))
+        
         top_wins = current_df.sort_values("wins", ascending=False).iloc[0]
         top_elo = current_df.sort_values("elo", ascending=False).iloc[0]
 
