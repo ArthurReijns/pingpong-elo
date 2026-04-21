@@ -22,7 +22,7 @@ scope = [
 ]
 
 creds = Credentials.from_service_account_info(
-    json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"]),
+    st.secrets["GOOGLE_SERVICE_ACCOUNT"],
     scopes=scope
 )
 
