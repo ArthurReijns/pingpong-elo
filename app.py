@@ -21,6 +21,9 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
+st.write("TYPE:", type(st.secrets["GOOGLE_SERVICE_ACCOUNT"]))
+st.write("PREVIEW:", str(st.secrets["GOOGLE_SERVICE_ACCOUNT"])[:100])
+
 creds = Credentials.from_service_account_info(
     st.secrets["GOOGLE_SERVICE_ACCOUNT"],
     scopes=scope
