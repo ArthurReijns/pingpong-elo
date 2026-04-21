@@ -250,7 +250,8 @@ def get_elo(player):
 # =========================
 # UI
 # =========================
-st.title("🏓🔥 Ping Pong ELO Arena")
+st.title("🏓🔥 KARMA Ping Pong Leaderboard 🏓🔥")
+st.subheader("Become the KARMA Ping Pong GOAT!")
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "➕ Matches",
@@ -267,6 +268,9 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 # =========================
 with tab1:
 
+    # =========================
+    # 1. ADD MATCH (UNCHANGED)
+    # =========================
     st.subheader("➕ Add Match")
 
     col1, col2 = st.columns(2)
@@ -303,40 +307,73 @@ with tab1:
 
             df = pd.concat([df, new], ignore_index=True)
             save_data(df)
-            st.cache_data.clear()
+            st.success("Match added")
             st.rerun()
 
+
     st.divider()
+
+    # =========================
+    # 2. ALL MATCHES TABLE
+    # =========================
+    st.subheader("📋 All Matches")
+
+    st.dataframe(
+        df.sort_values("wedstrijdId", ascending=False),
+        use_container_width=True,
+        hide_index=True
+    )
+
+
+    st.divider()
+
+    # =========================
+    # 3. DELETE MATCH (SAFE)
+    # =========================
     st.subheader("🗑️ Delete Match")
-    
+
     user_df = user_matches(df)
-    
-    if not user_df.empty:
-    
+
+    if user_df.empty:
+        st.info("No matches to delete")
+    else:
+
+        st.write("Your matches:")
         st.dataframe(user_df, use_container_width=True, hide_index=True)
-    
+
         del_id = st.selectbox(
-            "Select match ID",
+            "Select match ID to delete",
             user_df["wedstrijdId"].tolist()
         )
-    
+
         match_row = user_df[user_df["wedstrijdId"] == del_id].iloc[0]
-    
-        st.warning("You are about to delete this match:")
-    
+
+        st.warning("Match selected for deletion:")
         st.write(match_row)
-    
-        confirm = st.checkbox("I confirm I want to delete this match")
-    
+
+        # RESET CONFIRMATION WHEN ID CHANGES
+        if "last_delete_id" not in st.session_state:
+            st.session_state.last_delete_id = None
+
+        if st.session_state.last_delete_id != del_id:
+            st.session_state.confirm_delete = False
+            st.session_state.last_delete_id = del_id
+
+        confirm = st.checkbox(
+            "I confirm I want to delete this match",
+            key="confirm_delete"
+        )
+
         if st.button("Delete ❌"):
-    
+
             if confirm:
                 df = df[df["wedstrijdId"] != del_id]
                 save_data(df)
-                st.success("Deleted")
+
+                st.success(f"Match {del_id} deleted successfully ✅")
                 st.rerun()
             else:
-                st.error("Confirm first")
+                st.error("You must confirm deletion first ⚠️")
 
 # =========================
 # TAB 2 - LEADERBOARD
