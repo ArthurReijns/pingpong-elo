@@ -308,6 +308,7 @@ with tab1:
             df = pd.concat([df, new], ignore_index=True)
             save_data(df)
             st.success("Match added")
+            st.cache_data.clear()
             st.rerun()
 
 
@@ -369,7 +370,7 @@ with tab1:
             if confirm:
                 df = df[df["wedstrijdId"] != del_id]
                 save_data(df)
-
+                st.cache_data.clear()
                 st.success(f"Match {del_id} deleted successfully ✅")
                 st.rerun()
             else:
