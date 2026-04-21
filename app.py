@@ -257,10 +257,10 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "➕ Matches",
     "🏆 Leaderboard",
     "📊 Stats",
-    "👤 Player",
-    "🧠 Matchmaking",
-    "🎯 Win Prob",
-    "👥 2v2"
+    "👤 Players",
+    "🧠 1v1 Matchmaking",
+    "👥 2v2 Matchmaking",
+    "🎯 1v1 Win Probability"
 ])
 
 # =========================
@@ -474,28 +474,9 @@ with tab5:
     st.dataframe(pd.DataFrame(suggestions), hide_index=True)
 
 # =========================
-# TAB 6 - WIN PROB
+# TAB 6 - WIN PROB 2v2
 # =========================
 with tab6:
-
-    st.subheader("🎯 Win Probability")
-
-    a = st.selectbox("A", current_df["speler"])
-    b = st.selectbox("B", current_df["speler"])
-
-    pa = get_elo(a)
-    pb = get_elo(b)
-
-    prob = 1 / (1 + 10 ** ((pb - pa) / 400))
-
-    st.metric(a, f"{prob*100:.1f}%")
-    st.metric(b, f"{(1-prob)*100:.1f}%")
-
-
-# =========================
-# TAB 7 - WIN PROB 2v2
-# =========================
-with tab7:
 
     st.subheader("👥 2v2 Matchmaking")
 
@@ -523,3 +504,24 @@ with tab7:
                     })
 
     st.dataframe(pd.DataFrame(pairs).head(20))
+
+# =========================
+# TAB 7 - WIN PROB
+# =========================
+with tab7:
+
+    st.subheader("🎯 Win Probability")
+
+    a = st.selectbox("A", current_df["speler"])
+    b = st.selectbox("B", current_df["speler"])
+
+    pa = get_elo(a)
+    pb = get_elo(b)
+
+    prob = 1 / (1 + 10 ** ((pb - pa) / 400))
+
+    st.metric(a, f"{prob*100:.1f}%")
+    st.metric(b, f"{(1-prob)*100:.1f}%")
+
+
+
