@@ -3,6 +3,7 @@ import pandas as pd
 import math
 import gspread
 from google.oauth2.service_account import Credentials
+import json
 
 # =========================
 # CONFIG
@@ -20,8 +21,8 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = Credentials.from_service_account_file(
-    "service_account.json",
+creds = Credentials.from_service_account_info(
+    json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"]),
     scopes=scope
 )
 
