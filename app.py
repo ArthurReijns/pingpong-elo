@@ -69,6 +69,7 @@ def valid_score(s1, s2):
 # =========================
 # DATA
 # =========================
+@st.cache_data(ttl=5)
 def load_data():
     cols = [
         "wedstrijdId",
