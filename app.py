@@ -258,6 +258,7 @@ with tab1:
 
             df = pd.concat([df, new], ignore_index=True)
             save_data(df)
+            st.cache_data.clear()
             st.rerun()
 
     st.divider()
@@ -285,6 +286,7 @@ with tab1:
             else:
                 df = df[df["wedstrijdId"] != del_id]
                 save_data(df)
+                st.cache_data.clear()
                 st.success("Match deleted")
                 st.rerun()
 
