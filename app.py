@@ -307,10 +307,16 @@ with tab1:
 
             df = pd.concat([df, new], ignore_index=True)
             save_data(df)
-            st.success("Match added")
-            st.cache_data.clear()
-            st.rerun()
 
+            st.success(f"✅ Match #{new_id} added successfully!")
+    
+            st.cache_data.clear()
+    
+            # small delay so user sees message
+            import time
+            time.sleep(0.6)
+    
+            st.rerun()
 
     st.divider()
 
