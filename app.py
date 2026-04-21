@@ -21,21 +21,13 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-st.write(type(st.secrets["google"]["service_account"]))
-st.write(str(st.secrets["google"]["service_account"])[:200])
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
 
 raw = st.secrets["google"]["service_account"]
-
-st.write("RAW TYPE:", type(raw))
-st.write("RAW PREVIEW:", str(raw)[:200])
-
-# FORCE CLEAN JSON STRING
-if isinstance(raw, str):
-    raw = raw.strip()
-
-    # if it is double-encoded JSON, fix it
-    if raw.startswith('"') and raw.endswith('"'):
-        raw = json.loads(raw)
 
 info = json.loads(raw)
 
