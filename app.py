@@ -115,6 +115,7 @@ def user_matches(df):
 def load_data():
     cols = [
         "wedstrijdId",
+        "created_by",
         "Team1_player1",
         "Team1_player2",
         "Team2_player1",
