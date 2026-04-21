@@ -38,6 +38,38 @@ client = gspread.authorize(creds)
 spreadsheet = client.open(SHEET_NAME)
 sheet = spreadsheet.worksheet("PingPongELOKARMA_matches")
 
+def load_users():
+    users_df = pd.DataFrame(sheet.spreadsheet.worksheet("USERS").get_all_records())
+    users_df["name"] = users_df["name"].astype(str).str.strip()
+    users_df["pin"] = users_df["pin"].astype(str).str.strip()
+    return users_df
+
+users_df = load_users()
+
+if "user" not in st.session_state:
+    st.session_state.user = None
+
+
+if st.session_state.user is None:
+    st.title("🔐 Login")
+
+    name = st.text_input("Name")
+    pin = st.text_input("PIN", type="password")
+
+    if st.button("Login"):
+        match = users_df[
+            (users_df["name"] == name) &
+            (users_df["pin"] == pin)
+        ]
+
+        if not match.empty:
+            st.session_state.user = name
+            st.rerun()
+        else:
+            st.error("Wrong login")
+    
+    st.stop()
+
 # =========================
 # HELPERS
 # =========================
@@ -72,6 +104,9 @@ def valid_score(s1, s2):
     low = min(s1, s2)
 
     return (high == 11 and low <= 9) or (high > 11 and high - low == 2)
+
+def user_matches(df):
+    return df[df["created_by"] == st.session_state.user]
 
 # =========================
 # DATA
@@ -216,13 +251,14 @@ def get_elo(player):
 # =========================
 st.title("🏓🔥 Ping Pong ELO Arena")
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "➕ Matches",
     "🏆 Leaderboard",
     "📊 Stats",
     "👤 Player",
     "🧠 Matchmaking",
-    "🎯 Win Prob"
+    "🎯 Win Prob",
+    "👥 2v2"
 ])
 
 # =========================
@@ -254,6 +290,7 @@ with tab1:
 
             new = pd.DataFrame([{
                 "wedstrijdId": new_id,
+                "created_by": st.session_state.user,
                 "Team1_player1": t1_p1,
                 "Team1_player2": t1_p2,
                 "Team2_player1": t2_p1,
@@ -270,32 +307,35 @@ with tab1:
 
     st.divider()
     st.subheader("🗑️ Delete Match")
-
-    if not df.empty:
-
-        del_id = st.selectbox("Select match", df["wedstrijdId"].tolist())
-
-        match_row = df[df["wedstrijdId"] == del_id].iloc[0]
-
-        st.write("### ⚠️ Match preview")
-        st.write(f"**ID:** {del_id}")
-        st.write(f"**Team 1:** {match_row['Team1_player1']} {match_row['Team1_player2'] or ''}")
-        st.write(f"**Team 2:** {match_row['Team2_player1']} {match_row['Team2_player2'] or ''}")
-        st.write(f"**Score:** {match_row['team1_punten']} - {match_row['team2_punten']}")
-        st.write(f"**Datum:** {match_row['datum']}")
-
-        confirm = st.checkbox("⚠️ I understand this will permanently delete this match")
-
+    
+    user_df = user_matches(df)
+    
+    if not user_df.empty:
+    
+        st.dataframe(user_df, use_container_width=True, hide_index=True)
+    
+        del_id = st.selectbox(
+            "Select match ID",
+            user_df["wedstrijdId"].tolist()
+        )
+    
+        match_row = user_df[user_df["wedstrijdId"] == del_id].iloc[0]
+    
+        st.warning("You are about to delete this match:")
+    
+        st.write(match_row)
+    
+        confirm = st.checkbox("I confirm I want to delete this match")
+    
         if st.button("Delete ❌"):
-
-            if not confirm:
-                st.error("You must confirm deletion first ⚠️")
-            else:
+    
+            if confirm:
                 df = df[df["wedstrijdId"] != del_id]
                 save_data(df)
-                st.cache_data.clear()
-                st.success("Match deleted")
+                st.success("Deleted")
                 st.rerun()
+            else:
+                st.error("Confirm first")
 
 # =========================
 # TAB 2 - LEADERBOARD
@@ -345,24 +385,32 @@ with tab3:
 # =========================
 with tab4:
 
-    st.subheader("👤 Player")
+    st.subheader("👤 Player Overview")
 
     player = st.selectbox("Select player", current_df["speler"])
     p = current_df[current_df["speler"] == player].iloc[0]
 
-    st.metric("ELO", int(p["elo"]))
-    st.metric("Matches", p["matches"])
-    st.metric("Wins", p["wins"])
-    st.metric("Win %", round(p["winrate"] * 100, 1))
+    player_hist = hist_df[hist_df["speler"] == player]
 
-    st.subheader("🔥 Form (last 5)")
+    highest_elo = player_hist["elo"].max() if not player_hist.empty else p["elo"]
 
-    f = form_df[form_df["speler"] == player].tail(5)
-    if not f.empty:
-        st.write("".join(["🟢" if x == 1 else "🔴" for x in f["result"]]))
+    col1, col2, col3, col4 = st.columns(4)
 
-    ph = hist_df[hist_df["speler"] == player]
-    st.line_chart(ph.set_index("wedstrijdId")["elo"])
+    col1.metric("Current ELO", int(p["elo"]))
+    col2.metric("Highest ELO", int(highest_elo))
+    col3.metric("Matches", p["matches"])
+    col4.metric("Win %", f"{p['winrate']*100:.1f}%")
+
+    st.subheader("🔥 Form (last 10)")
+    f = form_df[form_df["speler"] == player].tail(10)
+    st.write("".join(["🟢" if x == 1 else "🔴" for x in f["result"]]))
+
+    st.subheader("📈 ELO evolution per match")
+    st.line_chart(player_hist.set_index("wedstrijdId")["elo"])
+
+    st.subheader("📅 ELO evolutoin per date")
+    latest = player_hist.sort_values("wedstrijdId").groupby(["datum","speler"]).last().reset_index()
+    st.line_chart(latest.pivot(index="datum", columns="speler", values="elo"))
 
 # =========================
 # TAB 5 - MATCHMAKING
@@ -404,3 +452,36 @@ with tab6:
 
     st.metric(a, f"{prob*100:.1f}%")
     st.metric(b, f"{(1-prob)*100:.1f}%")
+
+
+# =========================
+# TAB 7 - WIN PROB 2v2
+# =========================
+with tab7:
+
+    st.subheader("👥 2v2 Matchmaking")
+
+    players = current_df.sort_values("elo", ascending=False)["speler"].tolist()
+
+    pairs = []
+
+    for i in range(len(players)):
+        for j in range(i+1, len(players)):
+            for k in range(i+2, len(players)):
+                for l in range(k+1, len(players)):
+
+                    team1 = [players[i], players[j]]
+                    team2 = [players[k], players[l]]
+
+                    e1 = sum(get_elo(p) for p in team1)/2
+                    e2 = sum(get_elo(p) for p in team2)/2
+
+                    prob = 1/(1+10**((e2-e1)/400))
+
+                    pairs.append({
+                        "Team 1": ",".join(team1),
+                        "Team 2": ",".join(team2),
+                        "Win % Team1": round(prob*100,1)
+                    })
+
+    st.dataframe(pd.DataFrame(pairs).head(20))
