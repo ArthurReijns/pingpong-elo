@@ -27,8 +27,7 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-raw = st.secrets["google"]["service_account"]
-
+raw = st.secrets["google"]["service_account"].strip()
 info = json.loads(raw)
 
 creds = Credentials.from_service_account_info(
