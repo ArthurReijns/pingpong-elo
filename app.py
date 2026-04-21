@@ -27,11 +27,9 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-raw = st.secrets["google"]["service_account"].strip()
-info = json.loads(raw)
-
+# REPLACE with just this:
 creds = Credentials.from_service_account_info(
-    info,
+    dict(st.secrets["google"]["service_account"]),
     scopes=scope
 )
 
