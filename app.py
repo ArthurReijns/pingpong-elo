@@ -21,11 +21,11 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-st.write(type(st.secrets["GOOGLE_SERVICE_ACCOUNT"]))
-st.write(st.secrets["GOOGLE_SERVICE_ACCOUNT"][:200])
+st.write(type(st.secrets["google"]["service_account"]))
+st.write(str(st.secrets["google"]["service_account"])[:200])
 
 creds = Credentials.from_service_account_info(
-    json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT"]),
+    json.loads(st.secrets["google"]["service_account"]),
     scopes=scope
 )
 
