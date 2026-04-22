@@ -524,7 +524,7 @@ with tab7:
     prob = expected(e1, e2)
 
     st.metric("Team 1 win %", f"{prob*100:.1f}%")
-    st.metric("Team 2 win %", f"{(1-prob)*100:.1f}%"
+    st.metric("Team 2 win %", f"{(1-prob)*100:.1f}%")
 
 
 
