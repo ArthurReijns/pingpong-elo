@@ -485,7 +485,7 @@ with tab3:
                                        [str(bm["Team1_player1"]), str(bm["Team1_player2"])]))
             t2_str = " & ".join(filter(lambda x: x and x.lower() != "nan",
                                        [str(bm["Team2_player1"]), str(bm["Team2_player2"])]))
-            st.write(f"💥 Biggest Score Gap:  **{t1_str}** vs **{t2_str}** "
+            st.markdown(f"# 💥 Biggest Score Gap:  **{t1_str}** vs **{t2_str}** "
                      f"({int(bm['team1_punten'])}–{int(bm['team2_punten'])})")
  
         # Biggest upset (lowest pre-match win probability for the winner)
