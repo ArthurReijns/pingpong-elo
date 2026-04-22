@@ -470,6 +470,7 @@ with tab3:
         top_matches = current_df.sort_values("matches",     ascending=False).iloc[0]
  
         st.write(f"🏅 Most Wins:          **{top_wins['speler']}** ({top_wins['wins']} wins)")
+        st.markdown(f"## 🏅 Most Wins: **{top_wins['speler']}** ({top_wins['wins']} wins)")
         st.write(f"🔥 Highest Current ELO: **{top_elo['speler']}** ({int(top_elo['elo'])})")
         st.write(f"👑 Highest Ever ELO:    **{top_highest['speler']}** ({int(top_highest['highest_elo'])})")
         st.write(f"🎯 Most Matches Played: **{top_matches['speler']}** ({top_matches['matches']} matches)")
