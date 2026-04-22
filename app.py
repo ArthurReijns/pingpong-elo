@@ -548,46 +548,6 @@ with tab3:
         if not hist_df.empty:
             st.line_chart(hist_df.pivot_table(
                 index="wedstrijdId", columns="speler", values="elo"))
-
-        import plotly.graph_objects as go
-   
-        st.subheader("📈 ELO progress per match")
-        
-        if not hist_df.empty:
-            # Compute axis bounds
-            min_elo = hist_df["elo"].min()
-            max_elo = hist_df["elo"].max()
-        
-            fig = go.Figure()
-        
-            for player in hist_df["speler"].unique():
-                player_df = hist_df[hist_df["speler"] == player]
-        
-                fig.add_trace(go.Scatter(
-                    x=player_df["wedstrijdId"],
-                    y=player_df["elo"],
-                    mode="lines",
-                    name=player
-                ))
-        
-            fig.update_layout(
-                yaxis=dict(range=[min_elo * 0.8, max_elo * 1.2]),
-                xaxis=dict(fixedrange=True),
-                yaxis_fixedrange=True,
-                dragmode=False,
-                hovermode="x unified"
-            )
-        
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-                config={
-                    "staticPlot": True,   # disables ALL interaction
-                    "scrollZoom": False,
-                    "doubleClick": False,
-                    "displayModeBar": False
-                }
-            )
     
         st.subheader("📅 ELO progress per date")
         if not hist_df.empty:
