@@ -284,7 +284,8 @@ with tab1:
     s1 = col1.number_input("Team 1 Points", 0, 30, 11)
     s2 = col2.number_input("Team 2 Points", 0, 30, 11)
 
-    date = st.date_input("Match Date")
+    import datetime
+    date = st.date_input("Match Date", max_value=datetime.date.today())
 
     if st.button("Add match 🚀"):
 
@@ -483,54 +484,24 @@ with tab5:
     st.dataframe(pd.DataFrame(suggestions), hide_index=True)
 
 # =========================
-# TAB 6 - WIN PROB 2v2
+# TAB 6 - WIN PROB
 # =========================
 with tab6:
 
-    st.subheader("👥 2v2 Matchmaking")
-
-    players = current_df.sort_values("elo", ascending=False)["speler"].tolist()
-
-    pairs = []
-
-    for i in range(len(players)):
-        for j in range(i+1, len(players)):
-            for k in range(i+2, len(players)):
-                for l in range(k+1, len(players)):
-
-                    team1 = [players[i], players[j]]
-                    team2 = [players[k], players[l]]
-
-                    e1 = sum(get_elo(p) for p in team1)/2
-                    e2 = sum(get_elo(p) for p in team2)/2
-
-                    prob = 1/(1+10**((e2-e1)/400))
-
-                    pairs.append({
-                        "Team 1": ",".join(team1),
-                        "Team 2": ",".join(team2),
-                        "Win % Team1": round(prob*100,1)
-                    })
-
-    st.dataframe(pd.DataFrame(pairs).head(20))
-
-# =========================
-# TAB 7 - WIN PROB
-# =========================
-with tab7:
-
     st.subheader("🎯 Win Probability")
-
-    a = st.selectbox("A", current_df["speler"])
-    b = st.selectbox("B", current_df["speler"])
 
     pa = get_elo(a)
     pb = get_elo(b)
 
     prob = 1 / (1 + 10 ** ((pb - pa) / 400))
 
-    st.metric(a, f"{prob*100:.1f}%")
-    st.metric(b, f"{(1-prob)*100:.1f}%")
+    col1, col2 = st.columns(2)
+    a = col1.selectbox("Player A", current_df["speler"])
+    b = col2.selectbox("Player B", current_df["speler"])
+    
+    col3, col4 = st.columns(2)
+    col3.metric(a, f"{prob*100:.1f}%")
+    col4.metric(b, f"{(1-prob)*100:.1f}%")
 
 
 
