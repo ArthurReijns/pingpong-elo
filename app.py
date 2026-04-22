@@ -548,6 +548,28 @@ with tab3:
         if not hist_df.empty:
             st.line_chart(hist_df.pivot_table(
                 index="wedstrijdId", columns="speler", values="elo"))
+
+        st.subheader("📈 ELO progress per match")
+   
+        if not hist_df.empty:
+            all_players = sorted(hist_df["speler"].unique())
+        
+            show_all = st.checkbox("All players", value=True)
+        
+            if show_all:
+                selected_players = all_players
+            else:
+                selected_players = st.multiselect(
+                    "Select players",
+                    all_players,
+                    default=all_players[:3] if len(all_players) >= 3 else all_players
+                )
+        
+            filtered_hist = hist_df[hist_df["speler"].isin(selected_players)]
+        
+            st.line_chart(filtered_hist.pivot_table(
+                index="wedstrijdId", columns="speler", values="elo"
+            ))
     
         st.subheader("📅 ELO progress per date")
         if not hist_df.empty:
