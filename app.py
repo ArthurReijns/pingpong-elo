@@ -469,10 +469,10 @@ with tab3:
         top_highest = current_df.sort_values("highest_elo", ascending=False).iloc[0]
         top_matches = current_df.sort_values("matches",     ascending=False).iloc[0]
  
-        st.markdown(f"#### 🏅 Most Wins: **{top_wins['speler']}** ({top_wins['wins']} wins)")
-        st.markdown(f"#### 🔥 Highest Current ELO: **{top_elo['speler']}** ({int(top_elo['elo'])})")
-        st.markdown(f"#### 👑 Highest Ever ELO:    **{top_highest['speler']}** ({int(top_highest['highest_elo'])})")
-        st.markdown(f"#### 🎯 Most Matches Played: **{top_matches['speler']}** ({top_matches['matches']} matches)")
+        st.markdown(f"##### 🏅 Most Wins: **{top_wins['speler']}** ({top_wins['wins']} wins)")
+        st.markdown(f"##### 🔥 Highest Current ELO: **{top_elo['speler']}** ({int(top_elo['elo'])})")
+        st.markdown(f"##### 👑 Highest Ever ELO:    **{top_highest['speler']}** ({int(top_highest['highest_elo'])})")
+        st.markdown(f"##### 🎯 Most Matches Played: **{top_matches['speler']}** ({top_matches['matches']} matches)")
  
         # Biggest score difference
         if not df.empty:
@@ -485,7 +485,7 @@ with tab3:
                                        [str(bm["Team1_player1"]), str(bm["Team1_player2"])]))
             t2_str = " & ".join(filter(lambda x: x and x.lower() != "nan",
                                        [str(bm["Team2_player1"]), str(bm["Team2_player2"])]))
-            st.markdown(f"#### 💥 Biggest Score Gap:  **{t1_str}** vs **{t2_str}** "
+            st.markdown(f"##### 💥 Biggest Score Gap:  **{t1_str}** vs **{t2_str}** "
                      f"({int(bm['team1_punten'])}–{int(bm['team2_punten'])})")
  
         # Biggest upset (lowest pre-match win probability for the winner)
@@ -540,7 +540,7 @@ with tab3:
  
             if upset_data:
                 bu = min(upset_data, key=lambda x: x["win_prob"])
-                st.markdown(f"#### 😱 Biggest Upset: **{bu['winner']}** beat **{bu['loser']}** "
+                st.markdown(f"##### 😱 Biggest Upset: **{bu['winner']}** beat **{bu['loser']}** "
                          f"with only **{bu['win_prob']*100:.1f}%** win chance "
                          f"(Match #{bu['match_id']}, {bu['score']})")
  
