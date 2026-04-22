@@ -589,11 +589,11 @@ with tab3:
                 }
             )
     
-           st.subheader("📅 ELO progress per date")
-           if not hist_df.empty:
-               latest = (hist_df.sort_values("wedstrijdId")
-                         .groupby(["datum","speler"]).last().reset_index())
-               st.line_chart(latest.pivot(index="datum", columns="speler", values="elo"))
+        st.subheader("📅 ELO progress per date")
+        if not hist_df.empty:
+            latest = (hist_df.sort_values("wedstrijdId")
+                      .groupby(["datum","speler"]).last().reset_index())
+            st.line_chart(latest.pivot(index="datum", columns="speler", values="elo"))
     else:
         st.info("No data yet.")
  
