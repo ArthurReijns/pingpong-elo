@@ -783,8 +783,8 @@ if is_arthur and tab_admin is not None:
         admin_users_df, users_ws = load_users_ws()
  
         st.write("**Current players:**")
-        st.dataframe(admin_users_df[["name"]], use_container_width=True, hide_index=True)
- 
+        st.dataframe(admin_users_df[["name", "pin"]], use_container_width=True, hide_index=True) 
+     
         st.divider()
         st.subheader("➕ Add New Player")
         new_name = st.text_input("Player Name",  key="admin_new_name")
