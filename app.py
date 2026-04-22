@@ -469,11 +469,10 @@ with tab3:
         top_highest = current_df.sort_values("highest_elo", ascending=False).iloc[0]
         top_matches = current_df.sort_values("matches",     ascending=False).iloc[0]
  
-        st.write(f"🏅 Most Wins:          **{top_wins['speler']}** ({top_wins['wins']} wins)")
         st.markdown(f"## 🏅 Most Wins: **{top_wins['speler']}** ({top_wins['wins']} wins)")
-        st.write(f"🔥 Highest Current ELO: **{top_elo['speler']}** ({int(top_elo['elo'])})")
-        st.write(f"👑 Highest Ever ELO:    **{top_highest['speler']}** ({int(top_highest['highest_elo'])})")
-        st.write(f"🎯 Most Matches Played: **{top_matches['speler']}** ({top_matches['matches']} matches)")
+        st.markdown(f"## 🔥 Highest Current ELO: **{top_elo['speler']}** ({int(top_elo['elo'])})")
+        st.markdown(f"## 👑 Highest Ever ELO:    **{top_highest['speler']}** ({int(top_highest['highest_elo'])})")
+        st.markdown(f"## 🎯 Most Matches Played: **{top_matches['speler']}** ({top_matches['matches']} matches)")
  
         # Biggest score difference
         if not df.empty:
@@ -541,7 +540,7 @@ with tab3:
  
             if upset_data:
                 bu = min(upset_data, key=lambda x: x["win_prob"])
-                st.write(f"😱 Biggest Upset: **{bu['winner']}** beat **{bu['loser']}** "
+                st.markdown(f"## 😱 Biggest Upset: **{bu['winner']}** beat **{bu['loser']}** "
                          f"with only **{bu['win_prob']*100:.1f}%** win chance "
                          f"(Match #{bu['match_id']}, {bu['score']})")
  
@@ -589,7 +588,7 @@ with tab4:
                 current_streak += 1
             else:
                 break
-        st.write(f"🔥 Current Win Streak: **{current_streak}**")
+        st.markdown(f"## 🔥 Current Win Streak: **{current_streak}**")
  
         # Head-to-head stats
         st.subheader("📊 Head-to-Head Stats")
@@ -630,17 +629,17 @@ with tab4:
         with col1:
             if opponents_count:
                 mpa = max(opponents_count, key=opponents_count.get)
-                st.write(f"🎯 Most played against: **{mpa}** ({opponents_count[mpa]}×)")
+                st.markdown(f"## 🎯 Most played against: **{mpa}** ({opponents_count[mpa]}×)")
             if partners_count:
                 mp = max(partners_count, key=partners_count.get)
-                st.write(f"🤝 Favourite 2v2 partner: **{mp}** ({partners_count[mp]}×)")
+                st.markdown(f"## 🤝 Favourite 2v2 partner: **{mp}** ({partners_count[mp]}×)")
         with col2:
             if beaten_count:
                 mb = max(beaten_count, key=beaten_count.get)
-                st.write(f"😤 Most beaten: **{mb}** ({beaten_count[mb]}×)")
+                st.markdown(f"## 😤 Most beaten: **{mb}** ({beaten_count[mb]}×)")
             if lost_to_count:
                 ml = max(lost_to_count, key=lost_to_count.get)
-                st.write(f"😰 Lost to most: **{ml}** ({lost_to_count[ml]}×)")
+                st.markdown(f"## 😰 Lost to most: **{ml}** ({lost_to_count[ml]}×)")
  
         st.subheader("📈 ELO evolution per match")
         if not player_hist.empty:
