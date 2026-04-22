@@ -469,10 +469,10 @@ with tab3:
         top_highest = current_df.sort_values("highest_elo", ascending=False).iloc[0]
         top_matches = current_df.sort_values("matches",     ascending=False).iloc[0]
  
-        st.markdown(f"## 🏅 Most Wins: **{top_wins['speler']}** ({top_wins['wins']} wins)")
-        st.markdown(f"## 🔥 Highest Current ELO: **{top_elo['speler']}** ({int(top_elo['elo'])})")
-        st.markdown(f"## 👑 Highest Ever ELO:    **{top_highest['speler']}** ({int(top_highest['highest_elo'])})")
-        st.markdown(f"## 🎯 Most Matches Played: **{top_matches['speler']}** ({top_matches['matches']} matches)")
+        st.markdown(f"#### 🏅 Most Wins: **{top_wins['speler']}** ({top_wins['wins']} wins)")
+        st.markdown(f"#### 🔥 Highest Current ELO: **{top_elo['speler']}** ({int(top_elo['elo'])})")
+        st.markdown(f"#### 👑 Highest Ever ELO:    **{top_highest['speler']}** ({int(top_highest['highest_elo'])})")
+        st.markdown(f"#### 🎯 Most Matches Played: **{top_matches['speler']}** ({top_matches['matches']} matches)")
  
         # Biggest score difference
         if not df.empty:
