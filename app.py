@@ -484,24 +484,47 @@ with tab5:
     st.dataframe(pd.DataFrame(suggestions), hide_index=True)
 
 # =========================
-# TAB 6 - WIN PROB
+# TAB 6
 # =========================
 with tab6:
-
-    st.subheader("🎯 Win Probability")
-
-    pa = get_elo(a)
-    pb = get_elo(b)
-
-    prob = 1 / (1 + 10 ** ((pb - pa) / 400))
+    st.subheader("👥 1v1 Win Probability")
 
     col1, col2 = st.columns(2)
-    a = col1.selectbox("Player A", current_df["speler"])
-    b = col2.selectbox("Player B", current_df["speler"])
-    
-    col3, col4 = st.columns(2)
-    col3.metric(a, f"{prob*100:.1f}%")
-    col4.metric(b, f"{(1-prob)*100:.1f}%")
+
+    a = col1.selectbox("Player A", current_df["Player"])
+    b = col2.selectbox("Player B", current_df["Player"])
+
+    pa = current_df[current_df["Player"] == a]["ELO rating"].iloc[0]
+    pb = current_df[current_df["Player"] == b]["ELO rating"].iloc[0]
+
+    prob = expected(pa, pb)
+
+    col1.metric(a, f"{prob*100:.1f}%")
+    col2.metric(b, f"{(1-prob)*100:.1f}%")
+
+# =========================
+# TAB 7
+# =========================
+with tab7:
+
+    st.subheader("👥 2v2 Win Probability")
+
+    t1a = st.selectbox("Team1 Player1", players_list)
+    t1b = st.selectbox("Team1 Player2", players_list)
+
+    t2a = st.selectbox("Team2 Player1", players_list)
+    t2b = st.selectbox("Team2 Player2", players_list)
+
+    e1 = (current_df[current_df["Player"] == t1a]["ELO rating"].iloc[0] +
+          current_df[current_df["Player"] == t1b]["ELO rating"].iloc[0]) / 2
+
+    e2 = (current_df[current_df["Player"] == t2a]["ELO rating"].iloc[0] +
+          current_df[current_df["Player"] == t2b]["ELO rating"].iloc[0]) / 2
+
+    prob = expected(e1, e2)
+
+    st.metric("Team 1 win %", f"{prob*100:.1f}%")
+    st.metric("Team 2 win %", f"{(1-prob)*100:.1f}%"
 
 
 
