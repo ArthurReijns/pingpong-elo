@@ -808,11 +808,19 @@ if is_arthur and tab_admin is not None:
         st.subheader("🗑️ Remove Player")
         del_player = st.selectbox("Select player to remove",
                                   admin_users_df["name"].tolist(), key="admin_del")
- 
+        
+        confirm_remove_player = st.checkbox(
+            f"I confirm I want to permanently remove **{del_player}**",
+            key="confirm_remove_player"
+        )
+        
         if st.button("Remove Player ❌"):
-            admin_users_df = admin_users_df[admin_users_df["name"] != del_player]
-            users_ws.clear()
-            users_ws.update([admin_users_df.columns.tolist()] +
-                            admin_users_df.astype(str).values.tolist())
-            st.success(f"Player **{del_player}** removed.")
-            st.rerun()
+            if confirm_remove_player:
+                admin_users_df = admin_users_df[admin_users_df["name"] != del_player]
+                users_ws.clear()
+                users_ws.update([admin_users_df.columns.tolist()] +
+                                admin_users_df.astype(str).values.tolist())
+                st.success(f"Player **{del_player}** removed.")
+                st.rerun()
+            else:
+                st.error("Please confirm deletion first ⚠️")
