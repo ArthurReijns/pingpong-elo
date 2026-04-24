@@ -734,55 +734,8 @@ with tab2:
                 "win%_2v2": "Win %", "streak_2v2": "Streak 🔥"
             })
 
-        # =========================
-        # STYLE LEADERBOARD
-        # =========================
-        
-        def style_leaderboard(df):
-            df = df.copy()
-        
-            # ensure ELO column exists (works for all views)
-            if "ELO (Overall)" in df.columns:
-                elo_col = "ELO"
-            elif "ELO (1v1)" in df.columns:
-                elo_col = "ELO (1v1)"
-            elif "ELO (2v2)" in df.columns:
-                elo_col = "ELO (2v2)"
-            else:
-                return df.style
-        
-            def row_color(row):
-                elo = row[elo_col]
-        
-                try:
-                    elo = float(elo)
-                except:
-                    return [''] * len(row)
-        
-                max_elo = df[elo_col].astype(float).max()
-        
-                top3_threshold = df[elo_col].astype(float).nlargest(3).min()
-                bottom3_threshold = df[elo_col].astype(float).nsmallest(3).max()
-        
-                if elo >= top3_threshold:
-                    if elo == max_elo:
-                        return ['background-color: #FFD700'] * len(row)
-                    elif elo == df[elo_col].astype(float).nlargest(2).iloc[-1]:
-                        return ['background-color: #C0C0C0'] * len(row)
-                    else:
-                        return ['background-color: #CD7F32'] * len(row)
-        
-                if elo <= bottom3_threshold:
-                    return ['background-color: #ffcccc'] * len(row)
-        
-                return [''] * len(row)
-        
-            return df.style.apply(row_color, axis=1)
-        
-        styled = style_leaderboard(lb_display)
-        
         st.dataframe(
-            styled,
+            lb_display,
             hide_index=True,
             use_container_width=True
         )
