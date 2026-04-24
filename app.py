@@ -742,7 +742,7 @@ with tab2:
             df = df.copy()
         
             # ensure ELO column exists (works for all views)
-            if "ELO" in df.columns:
+            if "ELO (Overall)" in df.columns:
                 elo_col = "ELO"
             elif "ELO (1v1)" in df.columns:
                 elo_col = "ELO (1v1)"
