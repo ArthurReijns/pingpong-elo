@@ -376,6 +376,10 @@ def compute_elo(df):
 # EXTRA STAT HELPERS
 # =========================
 def compute_streaks(form_df):
+    # ✅ FIX: handle empty dataframe safely
+    if form_df is None or form_df.empty or "speler" not in form_df.columns:
+        return {}
+
     streaks = {}
     for player in form_df["speler"].unique():
         results = form_df[form_df["speler"] == player]["result"].tolist()
@@ -386,14 +390,17 @@ def compute_streaks(form_df):
             else:
                 break
         streaks[player] = streak
+
     return streaks
 
 def compute_highest_elo(hist_df):
-    if hist_df.empty:
+    if hist_df is None or hist_df.empty or "speler" not in hist_df.columns:
         return {}
     return hist_df.groupby("speler")["elo"].max().to_dict()
 
 def compute_biggest_win(df):
+    if df is None or df.empty:
+        return {}
     biggest = {}
     for _, r in df.iterrows():
         t1 = get_players(r, "Team1")
