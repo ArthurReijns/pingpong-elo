@@ -177,6 +177,16 @@ current_group = st.session_state.group
 # Welcome banner
 st.markdown(f"👋 **Welcome, {st.session_state.user}!**")
 
+import time
+
+if st.button("🔄 Refresh"):
+    st.session_state["last_refresh"] = time.time()
+    st.cache_data.clear()
+    st.rerun()
+
+if "last_refresh" in st.session_state:
+    st.caption(f"Last refresh: {time.strftime('%H:%M:%S', time.localtime(st.session_state['last_refresh']))}")
+
 # =========================
 # HELPERS
 # =========================
