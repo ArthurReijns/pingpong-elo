@@ -764,8 +764,7 @@ with tab2:
     days_in_month = calendar.monthrange(year, month)[1]
     days_left = days_in_month - today.day
     
-    st.caption(f"{month_name} {year} — {days_left} days remaining")
-    
+    st.markdown(f"##### {month_name} {year} — {days_left} days remaining")    
     # -------------------------
     # DATE FILTER
     # -------------------------
@@ -854,10 +853,10 @@ with tab2:
     
         rows.append({
             "Player": p,
-            "Start ELO": round(start_elo),
+            "Start of Month ELO": round(start_elo),
             "Current ELO": round(current_elo),
             "Δ ELO": round(elo_change),
-            "% Change": round(pct_change, 1),
+            "%ELO Change": round(pct_change, 1),
             "Matches": len(player_matches),
             "Wins": wins
         })
