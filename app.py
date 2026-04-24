@@ -13,6 +13,8 @@ from itertools import combinations
 DEFAULT_K          = 32
 DEFAULT_START_ELO  = 1000
 DEFAULT_SCALE      = 400   # ELO scale factor (400 is standard)
+DEFAULT_WEIGHT_1v1 = 1.0
+DEFAULT_WEIGHT_2v2 = 0.5
 
 st.set_page_config(page_title="🏓 Ping Pong ELO Arena", layout="wide")
 
@@ -39,36 +41,58 @@ sheet       = spreadsheet.worksheet("PingPongELOKARMA_matches")
 @st.cache_data(ttl=60)
 def load_settings():
     try:
-        ws   = spreadsheet.worksheet("SETTINGS")
+        ws = spreadsheet.worksheet("SETTINGS")
         rows = ws.get_all_records()
-        d    = {r["key"]: r["value"] for r in rows if "key" in r and "value" in r}
-        return {
-            "K":         float(d.get("K",         DEFAULT_K)),
-            "START_ELO": float(d.get("START_ELO", DEFAULT_START_ELO)),
-            "SCALE":     float(d.get("SCALE",     DEFAULT_SCALE)),
-        }
-    except Exception:
-        return {"K": DEFAULT_K, "START_ELO": DEFAULT_START_ELO, "SCALE": DEFAULT_SCALE}
+        d = {r["key"]: r["value"] for r in rows if "key" in r and "value" in r}
 
-def save_settings(k, start_elo, scale):
+        return {
+            "K":         float(d.get("K", DEFAULT_K)),
+            "START_ELO": float(d.get("START_ELO", DEFAULT_START_ELO)),
+            "SCALE":     float(d.get("SCALE", DEFAULT_SCALE)),
+            "W_1V1":     float(d.get("W_1V1", DEFAULT_WEIGHT_1v1)),
+            "W_2V2":     float(d.get("W_2V2", DEFAULT_WEIGHT_2v2)),
+        }
+
+    except Exception:
+        return {
+            "K": DEFAULT_K,
+            "START_ELO": DEFAULT_START_ELO,
+            "SCALE": DEFAULT_SCALE,
+            "W_1V1": DEFAULT_WEIGHT_1v1,
+            "W_2V2": DEFAULT_WEIGHT_2v2,
+        }
+
+def save_settings(k, start_elo, scale, w_1v1, w_2v2):
     try:
         try:
             ws = spreadsheet.worksheet("SETTINGS")
         except Exception:
-            ws = spreadsheet.add_worksheet("SETTINGS", rows=10, cols=3)
+            ws = spreadsheet.add_worksheet("SETTINGS", rows=20, cols=3)
+
         ws.clear()
-        ws.update([["key", "value", "description"],
-                   ["K",         str(k),         "K-factor: hoe snel ELO verandert per wedstrijd"],
-                   ["START_ELO", str(start_elo), "Startwaarde ELO voor nieuwe spelers"],
-                   ["SCALE",     str(scale),     "Schalingsfactor (standaard 400)"]])
+
+        ws.update([
+            ["key", "value", "description"],
+            ["K",         str(k),        "K-factor"],
+            ["START_ELO", str(start_elo),"Start ELO"],
+            ["SCALE",     str(scale),    "Scaling factor"],
+            ["W_1V1",     str(w_1v1),    "Overall weight for 1v1 matches"],
+            ["W_2V2",     str(w_2v2),    "Overall weight for 2v2 matches"],
+        ])
+
         st.cache_data.clear()
+
     except Exception as e:
         st.error(f"Kon instellingen niet opslaan: {e}")
 
 settings  = load_settings()
+
 K         = settings["K"]
 START_ELO = settings["START_ELO"]
 SCALE     = settings["SCALE"]
+
+W_1V1     = settings["W_1V1"]
+W_2V2     = settings["W_2V2"]
 
 # =========================
 # COLUMN RENAME MAPS
@@ -232,6 +256,187 @@ def filter_by_group(df, users_df, group):
         players = get_players(row, "Team1") + get_players(row, "Team2")
         return all(p in group_players for p in players) if players else False
     return df[df.apply(all_in_group, axis=1)].reset_index(drop=True)
+
+# =========================
+# ELO ENGINE (FINAL VERSION)
+# =========================
+def compute_elo(df):
+
+    if df.empty:
+        empty_cur = pd.DataFrame(columns=[
+            "speler","elo","elo_1v1","elo_2v2",
+            "matches","wins","matches_1v1","wins_1v1",
+            "matches_2v2","wins_2v2","winrate"
+        ])
+        return empty_cur, pd.DataFrame(), pd.DataFrame()
+
+    df = df.sort_values("wedstrijdId")
+
+    # -------------------------
+    # STATE
+    # -------------------------
+    elo = {}
+    elo_1v1 = {}
+    elo_2v2 = {}
+    stats = {}
+
+    history = []
+    form_log = []
+
+    # -------------------------
+    # LOOP MATCHES
+    # -------------------------
+    for _, r in df.iterrows():
+
+        t1 = get_players(r, "Team1")
+        t2 = get_players(r, "Team2")
+
+        if not t1 or not t2:
+            continue
+
+        try:
+            s1 = float(r["team1_punten"])
+            s2 = float(r["team2_punten"])
+        except:
+            continue
+
+        mtype = "1v1" if (len(t1) == 1 and len(t2) == 1) else "2v2"
+
+        # -------------------------
+        # INIT PLAYERS
+        # -------------------------
+        for p in t1 + t2:
+            if p not in elo:
+                elo[p] = START_ELO
+                elo_1v1[p] = START_ELO
+                elo_2v2[p] = START_ELO
+                stats[p] = {
+                    "matches": 0, "wins": 0,
+                    "matches_1v1": 0, "wins_1v1": 0,
+                    "matches_2v2": 0, "wins_2v2": 0
+                }
+
+        res1 = 1 if s1 > s2 else 0
+        res2 = 1 - res1
+
+        # -------------------------
+        # FORM TRACKING
+        # -------------------------
+        for p in t1:
+            form_log.append((p, res1, mtype))
+        for p in t2:
+            form_log.append((p, res2, mtype))
+
+        diff = abs(s1 - s2)
+        mult = max(1.0, math.log(diff + 1))
+
+        # =====================================================
+        # 🟦 1V1 MATCH
+        # =====================================================
+        if mtype == "1v1":
+
+            e1 = elo_1v1[t1[0]]
+            e2 = elo_1v1[t2[0]]
+
+            expected1 = 1 / (1 + 10 ** ((e2 - e1) / SCALE))
+            d = K * mult * (res1 - expected1)
+
+            # update 1v1 + overall
+            for p in t1:
+                elo_1v1[p] += d
+                elo[p] += W_1V1 * d
+
+                stats[p]["matches"] += 1
+                stats[p]["wins"] += res1
+                stats[p]["matches_1v1"] += 1
+                stats[p]["wins_1v1"] += res1
+
+            for p in t2:
+                elo_1v1[p] -= d
+                elo[p] -= W_1V1 * d
+
+                stats[p]["matches"] += 1
+                stats[p]["wins"] += res2
+                stats[p]["matches_1v1"] += 1
+                stats[p]["wins_1v1"] += res2
+
+        # =====================================================
+        # 🟩 2V2 MATCH
+        # =====================================================
+        else:
+
+            e1 = sum(elo_2v2[p] for p in t1) / len(t1)
+            e2 = sum(elo_2v2[p] for p in t2) / len(t2)
+
+            expected1 = 1 / (1 + 10 ** ((e2 - e1) / SCALE))
+            d = K * mult * (res1 - expected1)
+
+            # update 2v2 + overall
+            for p in t1:
+                elo_2v2[p] += d
+                elo[p] += W_2V2 * d
+
+                stats[p]["matches"] += 1
+                stats[p]["wins"] += res1
+                stats[p]["matches_2v2"] += 1
+                stats[p]["wins_2v2"] += res1
+
+            for p in t2:
+                elo_2v2[p] -= d
+                elo[p] -= W_2V2 * d
+
+                stats[p]["matches"] += 1
+                stats[p]["wins"] += res2
+                stats[p]["matches_2v2"] += 1
+                stats[p]["wins_2v2"] += res2
+
+        # -------------------------
+        # HISTORY (after update)
+        # -------------------------
+        for p in elo:
+            history.append({
+                "wedstrijdId": r["wedstrijdId"],
+                "datum": r["datum"],
+                "speler": p,
+                "elo": elo[p],
+                "elo_1v1": elo_1v1[p],
+                "elo_2v2": elo_2v2[p],
+                "match_type": mtype
+            })
+
+    # =========================
+    # OUTPUT TABLES
+    # =========================
+    hist_df = pd.DataFrame(history)
+    hist_df["datum"] = pd.to_datetime(hist_df["datum"])
+
+    form_df = pd.DataFrame(form_log, columns=["speler", "result", "match_type"])
+
+    current = []
+    for p in elo:
+        s = stats[p]
+        wr1 = s["wins_1v1"] / s["matches_1v1"] if s["matches_1v1"] else None
+        wr2 = s["wins_2v2"] / s["matches_2v2"] if s["matches_2v2"] else None
+        current.append({
+            "speler": p,
+            "elo": elo[p],
+            "elo_1v1": elo_1v1[p],
+            "elo_2v2": elo_2v2[p],
+
+            "matches": s["matches"],
+            "wins": s["wins"],
+            "winrate": s["wins"] / s["matches"] if s["matches"] else 0,
+
+            "matches_1v1": s["matches_1v1"],
+            "wins_1v1": s["wins_1v1"],
+            "winrate_1v1":  wr1,
+
+            "matches_2v2": s["matches_2v2"],
+            "wins_2v2": s["wins_2v2"],
+            "winrate_2v2":  wr2,
+        })
+
+    return pd.DataFrame(current), hist_df, form_df
 
 # =========================
 # ELO ENGINE  (overall + 1v1 + 2v2)
@@ -1439,10 +1644,27 @@ with tab_set_admin:
         min_value=100.0, max_value=1000.0, value=float(SCALE), step=50.0
     )
 
+    st.markdown("### ⚖️ Match type influence on OVERALL ELO")
+
+    col4, col5 = st.columns(2)
+
+    new_w_1v1 = col4.slider(
+        "1v1 weight (overall impact)",
+        min_value=0.0, max_value=1.0,
+        value=float(W_1V1), step=0.05
+    )
+
+    new_w_2v2 = col5.slider(
+        "2v2 weight (overall impact)",
+        min_value=0.0, max_value=1.0,
+        value=float(W_2V2), step=0.05
+    )
+
     if st.button("💾 Save settings"):
         save_settings(new_k, new_start, new_scale)
         st.success("Saved!")
         st.cache_data.clear()
+        st.rerun()
 
 
 # =========================
