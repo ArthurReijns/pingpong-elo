@@ -749,9 +749,6 @@ with tab2:
     import calendar
     import datetime as dt
     
-    # -------------------------
-    # CURRENT MONTH INFO
-    # -------------------------
     today = dt.date.today()
     year, month = today.year, today.month
     
@@ -761,43 +758,58 @@ with tab2:
     
     st.caption(f"{month_name} {year} — {days_left} days remaining")
     
-    
     # -------------------------
-    # FILTER HISTORIC DATA
+    # DATE FILTER
     # -------------------------
-    hist = hist_df.copy()
-    hist["datum"] = pd.to_datetime(hist["datum"])
-    
     start_month = pd.Timestamp(year=year, month=month, day=1)
     end_month   = pd.Timestamp(today)
     
-    # match view filter
+    df_month = df.copy()
+    df_month["datum"] = pd.to_datetime(df_month["datum"])
+    
+    # -------------------------
+    # VIEW FILTER (IMPORTANT FIX)
+    # -------------------------
     if view == "1v1":
-        hist = hist[hist["match_type"] == "1v1"]
+        df_month = df_month[df_month.apply(lambda r: is_1v1(r), axis=1)]
     elif view == "2v2":
-        hist = hist[hist["match_type"] == "2v2"]
-    else:
-        hist = hist[hist["match_type"] == "Overall"]
+        df_month = df_month[df_month.apply(lambda r: is_2v2(r), axis=1)]
+    # Overall = no filter
     
     
     # -------------------------
-    # PLAYERS LIST
+    # PLAYERS IN THIS VIEW
     # -------------------------
-    players = sorted(hist["speler"].unique().tolist())
+    players = sorted(
+        set(df_month["Team1_player1"].dropna().tolist() +
+            df_month["Team1_player2"].dropna().tolist() +
+            df_month["Team2_player1"].dropna().tolist() +
+            df_month["Team2_player2"].dropna().tolist())
+    )
     
     rows = []
     
-    
     # -------------------------
-    # COMPUTE MONTHLY STATS
+    # PROCESS EACH PLAYER
     # -------------------------
     for p in players:
-        p_hist = hist[hist["speler"] == p].sort_values("wedstrijdId")
+    
+        # all matches this month for this player
+        player_matches = df_month[
+            df_month.apply(lambda r: p in get_players(r, "Team1") + get_players(r, "Team2"), axis=1)
+        ]
+    
+        if player_matches.empty:
+            continue
+    
+        # -------------------------
+        # HISTORICAL ELO (CORRECT FIX)
+        # -------------------------
+        p_hist = hist_df[hist_df["speler"] == p].sort_values("wedstrijdId")
     
         if p_hist.empty:
             continue
     
-        # ---- START ELO (exact: last known before month) ----
         before_month = p_hist[p_hist["datum"] < start_month]
     
         if not before_month.empty:
@@ -805,33 +817,13 @@ with tab2:
         else:
             start_elo = START_ELO
     
-        # ---- CURRENT ELO ----
         current_elo = p_hist.iloc[-1]["elo"]
     
-        # ---- FILTER MONTH MATCHES ----
-        month_hist = p_hist[
-            (p_hist["datum"] >= start_month) &
-            (p_hist["datum"] <= end_month)
-        ]
-    
-        if month_hist.empty:
-            continue
-    
-        # ---- MATCHES PLAYED ----
-        match_ids = month_hist["wedstrijdId"].unique()
-        matches_played = len(match_ids)
-    
-        # ---- WINS CALCULATION ----
+        # -------------------------
+        # MATCH STATS
+        # -------------------------
         wins = 0
-    
-        for mid in match_ids:
-            match_rows = df[df["wedstrijdId"] == mid]
-    
-            if match_rows.empty:
-                continue
-    
-            r = match_rows.iloc[0]
-    
+        for _, r in player_matches.iterrows():
             t1 = get_players(r, "Team1")
             t2 = get_players(r, "Team2")
     
@@ -845,7 +837,9 @@ with tab2:
             elif p in t2 and s2 > s1:
                 wins += 1
     
-        # ---- STATS ----
+        # -------------------------
+        # FINAL STATS
+        # -------------------------
         elo_change = current_elo - start_elo
         pct_change = (elo_change / start_elo) * 100 if start_elo else 0
     
@@ -855,13 +849,13 @@ with tab2:
             "Current ELO": round(current_elo),
             "Δ ELO": round(elo_change),
             "% Change": round(pct_change, 1),
-            "Matches": matches_played,
+            "Matches": len(player_matches),
             "Wins": wins
         })
     
     
     # -------------------------
-    # OUTPUT TABLE
+    # OUTPUT
     # -------------------------
     monthly_df = pd.DataFrame(rows)
     
