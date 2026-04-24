@@ -1648,40 +1648,40 @@ with tab_info:
         > less after 2v2 matches
         """)
 
- st.divider()
-
- # =========================
- # SIMULATOR
- # =========================
- st.markdown("### 📊 Simulate 1v1 ELO change")
- st.caption("Pure 1v1 system simulation (does NOT affect overall ELO)")
-
- sc1, sc2, sc3 = st.columns(3)
- sim_elo_a = sc1.number_input("Player A ELO", value=1000, step=10, key="sim_a")
- sim_elo_b = sc2.number_input("Player B ELO", value=1000, step=10, key="sim_b")
-
- sim_score = sc3.selectbox(
-     "Score (A wins)",
-     ["11-0","11-1","11-2","11-3","11-4","11-5",
-      "11-6","11-7","11-8","11-9","12-10","13-11"],
-     key="sim_score"
- )
-
- sim_w, sim_l = map(int, sim_score.split("-"))
- sim_diff  = abs(sim_w - sim_l)
- sim_mult  = math.log(sim_diff + 1)
- sim_exp   = expected(sim_elo_a, sim_elo_b)
- sim_delta = K * sim_mult * (1 - sim_exp)
-
- st.markdown(f"""
-| Metric | Value |
-|------|------|
-| Expected win chance A | **{sim_exp*100:.1f}%** |
-| Score multiplier | **{sim_mult:.2f}** |
-| ELO change | **+{sim_delta:.1f} / −{sim_delta:.1f}** |
-| New A ELO | **{sim_elo_a + sim_delta:.0f}** |
-| New B ELO | **{sim_elo_b - sim_delta:.0f}** |
-""")
+     st.divider()
+    
+     # =========================
+     # SIMULATOR
+     # =========================
+     st.markdown("### 📊 Simulate 1v1 ELO change")
+     st.caption("Pure 1v1 system simulation (does NOT affect overall ELO)")
+    
+     sc1, sc2, sc3 = st.columns(3)
+     sim_elo_a = sc1.number_input("Player A ELO", value=1000, step=10, key="sim_a")
+     sim_elo_b = sc2.number_input("Player B ELO", value=1000, step=10, key="sim_b")
+    
+     sim_score = sc3.selectbox(
+         "Score (A wins)",
+         ["11-0","11-1","11-2","11-3","11-4","11-5",
+          "11-6","11-7","11-8","11-9","12-10","13-11"],
+         key="sim_score"
+     )
+    
+     sim_w, sim_l = map(int, sim_score.split("-"))
+     sim_diff  = abs(sim_w - sim_l)
+     sim_mult  = math.log(sim_diff + 1)
+     sim_exp   = expected(sim_elo_a, sim_elo_b)
+     sim_delta = K * sim_mult * (1 - sim_exp)
+    
+     st.markdown(f"""
+    | Metric | Value |
+    |------|------|
+    | Expected win chance A | **{sim_exp*100:.1f}%** |
+    | Score multiplier | **{sim_mult:.2f}** |
+    | ELO change | **+{sim_delta:.1f} / −{sim_delta:.1f}** |
+    | New A ELO | **{sim_elo_a + sim_delta:.0f}** |
+    | New B ELO | **{sim_elo_b - sim_delta:.0f}** |
+    """)
 
 # =========================
 # ADMIN TAB — MANAGE PLAYERS (Arthur only)
