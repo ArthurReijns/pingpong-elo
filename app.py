@@ -1177,10 +1177,6 @@ with tab8:
     if not current_df.empty:
         players_sorted = sorted(current_df["speler"].tolist())
 
-        col1, col2 = st.columns(2)
-        col1.markdown("**🟦 Team 1**")
-        col2.markdown("**🟥 Team 2**")
-
         def available_players(base_list, exclude):
             return [p for p in base_list if p not in exclude]
         
