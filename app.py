@@ -1305,7 +1305,7 @@ if is_arthur and tab_admin is not None:
         st.subheader("➕ Add New Player")
         new_name  = st.text_input("Player Name", key="admin_new_name")
         new_pin   = st.text_input("PIN",          key="admin_new_pin",   type="password")
-        new_group = st.text_input("Group",        key="admin_new_group")
+        new_group = st.text_input("Group",        key="admin_new_group", value=current_group)
 
         if st.button("Add Player ✅"):
             if not new_name.strip() or not new_pin.strip():
