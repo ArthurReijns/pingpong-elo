@@ -1661,7 +1661,7 @@ with tab_set_admin:
     )
 
     if st.button("💾 Save settings"):
-        save_settings(new_k, new_start, new_scale)
+        save_settings(new_k, new_start, new_scale, new_w_1v1, new_w_2v2)
         st.success("Saved!")
         st.cache_data.clear()
         st.rerun()
