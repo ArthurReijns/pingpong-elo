@@ -900,10 +900,10 @@ with tab4:
 
         # Sub-stats
         c1, c2 = st.columns(2)
-        c1.markdown(f"**1v1:** {int(p_row['matches_1v1'])} matches — {int(p_row['wins_1v1'])} wins — "
-                    f"{p_row['winrate_1v1']*100:.1f}% win rate" if p_row['matches_1v1'] > 0 else "**1v1:** geen wedstrijden")
+        c1.markdown(f"##**1v1:** {int(p_row['matches_1v1'])} matches — {int(p_row['wins_1v1'])} wins — "
+                    f"{p_row['winrate_1v1']*100:.1f}% win rate" if p_row['matches_1v1'] > 0 else "**1v1:** No matches")
         c2.markdown(f"**2v2:** {int(p_row['matches_2v2'])} matches — {int(p_row['wins_2v2'])} wins — "
-                    f"{p_row['winrate_2v2']*100:.1f}% win rate" if p_row['matches_2v2'] > 0 else "**2v2:** geen wedstrijden")
+                    f"{p_row['winrate_2v2']*100:.1f}% win rate" if p_row['matches_2v2'] > 0 else "**2v2:** No matches")
 
         # ---- Form ----
         st.subheader("🔥 Form (last 10 matches)")
