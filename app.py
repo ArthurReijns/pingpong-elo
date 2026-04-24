@@ -176,9 +176,6 @@ current_group = st.session_state.group
 
 col1, col2 = st.columns([8, 1])
 
-with col1:
-    st.markdown(f"👋 **Welcome, {st.session_state.user}!**")
-
 with col2:
     if st.button("Refresh data and ELO🔄"):
         st.session_state["last_refresh"] = time.time()
