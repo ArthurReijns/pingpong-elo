@@ -1270,21 +1270,6 @@ with tab_set:
     | Nieuwe ELO B | **{sim_elo_b - sim_delta:.0f}** |
     """)
 
-    st.divider()
-    st.markdown("### 📘 Migratie: Group-kolom toevoegen aan USERS sheet")
-    st.info("""
-    **Hoe voeg je de 'group' kolom toe aan je Google Sheet?**
-
-    1. Open je Google Sheet → tabblad **USERS**
-    2. Voeg een nieuwe kolom toe met de naam **group**
-    3. Vul voor elke bestaande speler een groepsnaam in (bijv. `karma`)
-    4. Alle spelers die dezelfde waarde hebben in de `group`-kolom zien elkaars data
-    5. Nieuwe spelers die je later toevoegt via het admin-tabblad krijgen automatisch een group mee
-
-    Spelers met een andere group (of een lege group) zien elkaars matches/ELO **niet**.
-    Je kunt dus meerdere groepen in dezelfde app draaien zonder dat ze elkaars data zien.
-    """)
-
 # =========================
 # ADMIN TAB — MANAGE PLAYERS (Arthur only)
 # =========================
