@@ -517,22 +517,26 @@ tab_labels = [
     "👥 2v2 Matchmaking",
     "🎯 1v1 Win Probability",
     "🎯 2v2 Win Probability",
-    "⚙️ Settings",
+    "⚙️ Settings (Admin)",
+    "ℹ️ Info & Simulation",
 ]
+
 if is_arthur:
     tab_labels.append("🔧 Manage Players")
 
-tabs     = st.tabs(tab_labels)
-tab1     = tabs[0]
-tab2     = tabs[1]
-tab3     = tabs[2]
-tab4     = tabs[3]
-tab5     = tabs[4]
-tab6     = tabs[5]
-tab7     = tabs[6]
-tab8     = tabs[7]
-tab_set  = tabs[8]
-tab_admin = tabs[9] if is_arthur else None
+tabs = st.tabs(tab_labels)
+
+tab1  = tabs[0]
+tab2  = tabs[1]
+tab3  = tabs[2]
+tab4  = tabs[3]
+tab5  = tabs[4]
+tab6  = tabs[5]
+tab7  = tabs[6]
+tab8  = tabs[7]
+tab_set_admin = tabs[8]
+tab_info = tabs[9]
+tab_admin = tabs[10] if is_arthur else None
 
 # =========================
 # TAB 1 — MATCHES
@@ -1263,7 +1267,49 @@ with tab8:
 # =========================
 # TAB 9 — SETTINGS
 # =========================
+with tab_set_admin:
+    st.subheader("⚙️ Admin Settings (Arthur only)")
+
+    if not is_arthur:
+        st.error("You are not allowed to edit settings.")
+        st.stop()
+
+    st.markdown("### 🔧 Parameters aanpassen")
+
+    col1, col2, col3 = st.columns(3)
+
+    new_k = col1.number_input(
+        "K-factor",
+        min_value=1.0, max_value=100.0, value=float(K), step=1.0
+    )
+
+    new_start = col2.number_input(
+        "Start ELO",
+        min_value=100.0, max_value=2000.0, value=float(START_ELO), step=100.0
+    )
+
+    new_scale = col3.number_input(
+        "Schaalfactor",
+        min_value=100.0, max_value=1000.0, value=float(SCALE), step=50.0
+    )
+
+    if st.button("💾 Instellingen opslaan"):
+        save_settings(new_k, new_start, new_scale)
+        st.success("Saved!")
+        st.cache_data.clear()
+
+# =========================
+# TAB 10 — INFO
+# =========================
 with tab_set:
+
+    st.subheader("ℹ️ System Info & ELO Simulation")
+
+    st.markdown("### 📌 Current Parameters")
+    st.write(f"**K-factor:** {K}")
+    st.write(f"**Start ELO:** {START_ELO}")
+    st.write(f"**Scale:** {SCALE}")
+    
     st.subheader("⚙️ ELO Settings & Uitleg")
 
     st.markdown("""
@@ -1283,38 +1329,6 @@ with tab_set:
     ELO-verandering = K × log(score_verschil + 1) × (uitkomst − verwacht_resultaat)
     ```
     """)
-
-    st.divider()
-    st.markdown("### 🔧 Parameters aanpassen")
-
-    col1, col2, col3 = st.columns(3)
-
-    new_k = col1.number_input(
-        "K-factor",
-        min_value=1.0, max_value=100.0, value=float(K), step=1.0,
-        help="Hoe groter K, hoe sneller ELO verandert per wedstrijd. "
-             "K=32 is de klassieke schaakwaarde. Gebruik lager (16) voor meer stabiliteit, "
-             "hoger (64) als je wil dat ranglijsten snel verschuiven."
-    )
-    new_start = col2.number_input(
-        "Start ELO",
-        min_value=100.0, max_value=2000.0, value=float(START_ELO), step=100.0,
-        help="ELO-waarde waarmee nieuwe spelers beginnen. "
-             "Verandering hiervan heeft pas effect als je alle data opnieuw berekent — "
-             "bestaande spelers houden hun huidige ELO."
-    )
-    new_scale = col3.number_input(
-        "Schaalfactor",
-        min_value=100.0, max_value=1000.0, value=float(SCALE), step=50.0,
-        help="Bepaalt hoe sterk het ELO-verschil de kansberekening beïnvloedt. "
-             "Standaard is 400 (zoals FIDE schaak). Lagere waarde = grotere kansverschillen "
-             "bij hetzelfde ELO-verschil."
-    )
-
-    if st.button("💾 Instellingen opslaan"):
-        save_settings(new_k, new_start, new_scale)
-        st.success("✅ Instellingen opgeslagen! Ververs de pagina om de nieuwe berekening te zien.")
-        st.cache_data.clear()
 
     st.divider()
     st.markdown("### 📊 Simuleer ELO-verandering")
