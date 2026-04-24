@@ -541,14 +541,46 @@ with tab1:
     st.subheader("➕ Add Match")
 
     col1, col2 = st.columns(2)
-
-    t1_p1_sel = col1.selectbox("Team 1 — Player 1",           [""] + players_list, key="t1p1")
-    t1_p2_sel = col1.selectbox("Team 1 — Player 2 (optional)", [""] + players_list, key="t1p2")
-    s1        = col1.number_input("Points Team 1", 0, 30, 11)
-
-    t2_p1_sel = col2.selectbox("Team 2 — Player 1",           [""] + players_list, key="t2p1")
-    t2_p2_sel = col2.selectbox("Team 2 — Player 2 (optional)", [""] + players_list, key="t2p2")
-    s2        = col2.number_input("Points Team 2", 0, 30, 11)
+    
+    # --- get current selections (so far) ---
+    t1_p1_prev = st.session_state.get("t1p1", "")
+    t1_p2_prev = st.session_state.get("t1p2", "")
+    t2_p1_prev = st.session_state.get("t2p1", "")
+    t2_p2_prev = st.session_state.get("t2p2", "")
+    
+    def available_players(exclude):
+        return [""] + [p for p in players_list if p not in exclude]
+    
+    # Team 1 Player 1
+    t1_p1_sel = col1.selectbox(
+        "Team 1 — Player 1",
+        available_players(set()),
+        key="t1p1"
+    )
+    
+    # Team 1 Player 2 (exclude T1P1)
+    t1_p2_sel = col1.selectbox(
+        "Team 1 — Player 2 (optional)",
+        available_players({t1_p1_sel}),
+        key="t1p2"
+    )
+    
+    # Team 2 Player 1 (exclude T1P1 + T1P2)
+    t2_p1_sel = col2.selectbox(
+        "Team 2 — Player 1",
+        available_players({t1_p1_sel, t1_p2_sel}),
+        key="t2p1"
+    )
+    
+    # Team 2 Player 2 (exclude all previous)
+    t2_p2_sel = col2.selectbox(
+        "Team 2 — Player 2 (optional)",
+        available_players({t1_p1_sel, t1_p2_sel, t2_p1_sel}),
+        key="t2p2"
+    )
+    
+    s1 = col1.number_input("Points Team 1", 0, 30, 11)
+    s2 = col2.number_input("Points Team 2", 0, 30, 11)
 
     date = st.date_input("Match Date", value=datetime.date.today(),
                          max_value=datetime.date.today())
