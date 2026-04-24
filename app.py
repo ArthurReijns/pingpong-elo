@@ -759,36 +759,34 @@ with tab2:
                 except:
                     return [''] * len(row)
         
-                # global max/min within this view
                 max_elo = df[elo_col].astype(float).max()
-                min_elo = df[elo_col].astype(float).min()
         
-                # top 3 by ELO value
                 top3_threshold = df[elo_col].astype(float).nlargest(3).min()
-        
-                # bottom 3 by ELO value
                 bottom3_threshold = df[elo_col].astype(float).nsmallest(3).max()
         
                 if elo >= top3_threshold:
                     if elo == max_elo:
-                        return ['background-color: #FFD700'] * len(row)  # gold
+                        return ['background-color: #FFD700'] * len(row)
                     elif elo == df[elo_col].astype(float).nlargest(2).iloc[-1]:
-                        return ['background-color: #C0C0C0'] * len(row)  # silver
+                        return ['background-color: #C0C0C0'] * len(row)
                     else:
-                        return ['background-color: #CD7F32'] * len(row)  # bronze
+                        return ['background-color: #CD7F32'] * len(row)
         
                 if elo <= bottom3_threshold:
-                    return ['background-color: #ffcccc'] * len(row)      # red bottom
+                    return ['background-color: #ffcccc'] * len(row)
         
                 return [''] * len(row)
         
             return df.style.apply(row_color, axis=1)
+        
+        styled = style_leaderboard(lb_display)
         
         st.dataframe(
             styled,
             hide_index=True,
             use_container_width=True
         )
+            
     else:
         st.info("No data yet.")
 
