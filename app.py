@@ -1099,8 +1099,21 @@ with tab7:
         players_sorted = sorted(current_df["speler"].tolist())
 
         col1, col2 = st.columns(2)
-        a = col1.selectbox("Player A", players_sorted, key="wp1_a")
-        b = col2.selectbox("Player B", players_sorted, key="wp1_b")
+        
+        def available_players(base_list, exclude):
+            return [p for p in base_list if p not in exclude]
+        
+        a = col1.selectbox(
+            "Player A",
+            available_players(players_sorted, set()),
+            key="wp1_a"
+        )
+        
+        b = col2.selectbox(
+            "Player B",
+            available_players(players_sorted, {a}),
+            key="wp1_b"
+        )
 
         elo_a = get_elo(a, "1v1")
         elo_b = get_elo(b, "1v1")
@@ -1168,10 +1181,37 @@ with tab8:
         col1.markdown("**🟦 Team 1**")
         col2.markdown("**🟥 Team 2**")
 
-        t1a = col1.selectbox("Team 1 — Player 1", players_sorted, key="2v2_t1a")
-        t1b = col1.selectbox("Team 1 — Player 2", players_sorted, key="2v2_t1b")
-        t2a = col2.selectbox("Team 2 — Player 1", players_sorted, key="2v2_t2a")
-        t2b = col2.selectbox("Team 2 — Player 2", players_sorted, key="2v2_t2b")
+        def available_players(base_list, exclude):
+            return [p for p in base_list if p not in exclude]
+        
+        col1, col2 = st.columns(2)
+        
+        col1.markdown("**🟦 Team 1**")
+        col2.markdown("**🟥 Team 2**")
+        
+        t1a = col1.selectbox(
+            "Team 1 — Player 1",
+            available_players(players_sorted, set()),
+            key="2v2_t1a"
+        )
+        
+        t1b = col1.selectbox(
+            "Team 1 — Player 2",
+            available_players(players_sorted, {t1a}),
+            key="2v2_t1b"
+        )
+        
+        t2a = col2.selectbox(
+            "Team 2 — Player 1",
+            available_players(players_sorted, {t1a, t1b}),
+            key="2v2_t2a"
+        )
+        
+        t2b = col2.selectbox(
+            "Team 2 — Player 2",
+            available_players(players_sorted, {t1a, t1b, t2a}),
+            key="2v2_t2b"
+        )
 
         e1   = (get_elo(t1a, "2v2") + get_elo(t1b, "2v2")) / 2
         e2   = (get_elo(t2a, "2v2") + get_elo(t2b, "2v2")) / 2
