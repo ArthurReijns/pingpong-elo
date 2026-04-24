@@ -995,7 +995,7 @@ with tab5:
                        and not (r["elo_1v1"] != r["elo_1v1"]) else r["elo"],
             axis=1
         )
-        sorted_players = mm1.sort_values("elo_use")
+        sorted_players = mm1.sort_values("elo_use", ascending=True)
         suggestions    = []
         for i in range(len(sorted_players) - 1):
             low  = sorted_players.iloc[i]
@@ -1007,7 +1007,11 @@ with tab5:
                 "Win % Player 1": f"{expected(float(low['elo_use']), float(high['elo_use']))*100:.1f}%",
                 "Win % Player 2": f"{expected(float(high['elo_use']), float(low['elo_use']))*100:.1f}%",
             })
-        st.dataframe(pd.DataFrame(suggestions), hide_index=True, use_container_width=True)
+        st.dataframe(
+            pd.DataFrame(suggestions).sort_values("ELO Gap"),
+            hide_index=True,
+            use_container_width=True
+        )
     else:
         st.info("No data yet.")
 
