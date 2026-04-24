@@ -180,7 +180,7 @@ with col1:
     st.markdown(f"👋 **Welcome, {st.session_state.user}!**")
 
 with col2:
-    if st.button("🔄"):
+    if st.button("Refresh data and ELO🔄"):
         st.session_state["last_refresh"] = time.time()
         st.cache_data.clear()
         st.rerun()
