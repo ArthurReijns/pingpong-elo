@@ -619,42 +619,57 @@ with tab1:
 
     col1, col2 = st.columns(2)
     
-    # --- get current selections (so far) ---
-    t1_p1_prev = st.session_state.get("t1p1", "")
-    t1_p2_prev = st.session_state.get("t1p2", "")
-    t2_p1_prev = st.session_state.get("t2p1", "")
-    t2_p2_prev = st.session_state.get("t2p2", "")
-    
     def available_players(exclude):
         return [""] + [p for p in players_list if p not in exclude]
     
-    # Team 1 Player 1
+    # --- Team 1 ---
     t1_p1_sel = col1.selectbox(
         "Team 1 — Player 1",
         available_players(set()),
         key="t1p1"
     )
     
-    # Team 1 Player 2 (exclude T1P1)
     t1_p2_sel = col1.selectbox(
         "Team 1 — Player 2 (optional)",
         available_players({t1_p1_sel}),
         key="t1p2"
     )
     
-    # Team 2 Player 1 (exclude T1P1 + T1P2)
+    # force team 1 size = 1 or 2
+    team1 = [p for p in [t1_p1_sel, t1_p2_sel] if p]
+    
+    # --- Team 2 ---
     t2_p1_sel = col2.selectbox(
         "Team 2 — Player 1",
-        available_players({t1_p1_sel, t1_p2_sel}),
+        available_players(set(team1)),
         key="t2p1"
     )
     
-    # Team 2 Player 2 (exclude all previous)
     t2_p2_sel = col2.selectbox(
         "Team 2 — Player 2 (optional)",
-        available_players({t1_p1_sel, t1_p2_sel, t2_p1_sel}),
+        available_players(set(team1 + [t2_p1_sel])),
         key="t2p2"
     )
+    
+    team2 = [p for p in [t2_p1_sel, t2_p2_sel] if p]
+    
+    # =========================
+    # VALIDATION RULE (IMPORTANT)
+    # =========================
+    valid_match = True
+    
+    if len(team1) not in [1, 2] or len(team2) not in [1, 2]:
+        valid_match = False
+    
+    if len(team1) != len(team2):
+        valid_match = False
+    
+    if len(set(team1 + team2)) != len(team1 + team2):
+        valid_match = False  # duplicate safety
+    
+    # show warning
+    if not valid_match:
+        st.error("❌ Invalid match: both teams must be 1v1 or 2v2 (no mixing allowed)")
     
     s1 = col1.number_input("Points Team 1", 0, 30, 11)
     s2 = col2.number_input("Points Team 2", 0, 30, 11)
