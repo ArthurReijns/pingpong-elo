@@ -511,7 +511,7 @@ def get_elo(player, mode="overall"):
 # =========================
 # BUILD TABS
 # =========================
-st.title("🏓🔥 KARMA Ping Pong Leaderboard 🏓🔥")
+st.title("🔥🏓 KARMA Ping Pong Leaderboard 🏓🔥")
 st.subheader("Become the KARMA Ping Pong GOAT!")
 
 is_arthur  = st.session_state.user == "Arthur"
