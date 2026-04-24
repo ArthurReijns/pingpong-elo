@@ -6,70 +6,32 @@ from google.oauth2.service_account import Credentials
 import datetime
 import time
 from itertools import combinations
-
+ 
 # =========================
-# CONFIG (defaults — overridable via Settings tab)
+# CONFIG
 # =========================
-DEFAULT_K          = 32
-DEFAULT_START_ELO  = 1000
-DEFAULT_SCALE      = 400   # ELO scale factor (400 is standard)
-
+K = 32
+START_ELO = 1000
+ 
 st.set_page_config(page_title="🏓 Ping Pong ELO Arena", layout="wide")
-
+ 
 SHEET_NAME = "PingPongELOKARMA_matches"
-
+ 
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
-
+ 
 creds = Credentials.from_service_account_info(
     dict(st.secrets["google"]["service_account"]),
     scopes=scope
 )
-
-client      = gspread.authorize(creds)
+ 
+client = gspread.authorize(creds)
 spreadsheet = client.open(SHEET_NAME)
-sheet       = spreadsheet.worksheet("PingPongELOKARMA_matches")
-
-# =========================
-# LOAD ELO SETTINGS
-# =========================
-@st.cache_data(ttl=60)
-def load_settings():
-    try:
-        ws   = spreadsheet.worksheet("SETTINGS")
-        rows = ws.get_all_records()
-        d    = {r["key"]: r["value"] for r in rows if "key" in r and "value" in r}
-        return {
-            "K":         float(d.get("K",         DEFAULT_K)),
-            "START_ELO": float(d.get("START_ELO", DEFAULT_START_ELO)),
-            "SCALE":     float(d.get("SCALE",     DEFAULT_SCALE)),
-        }
-    except Exception:
-        return {"K": DEFAULT_K, "START_ELO": DEFAULT_START_ELO, "SCALE": DEFAULT_SCALE}
-
-def save_settings(k, start_elo, scale):
-    try:
-        try:
-            ws = spreadsheet.worksheet("SETTINGS")
-        except Exception:
-            ws = spreadsheet.add_worksheet("SETTINGS", rows=10, cols=3)
-        ws.clear()
-        ws.update([["key", "value", "description"],
-                   ["K",         str(k),         "K-factor: hoe snel ELO verandert per wedstrijd"],
-                   ["START_ELO", str(start_elo), "Startwaarde ELO voor nieuwe spelers"],
-                   ["SCALE",     str(scale),     "Schalingsfactor (standaard 400)"]])
-        st.cache_data.clear()
-    except Exception as e:
-        st.error(f"Kon instellingen niet opslaan: {e}")
-
-settings  = load_settings()
-K         = settings["K"]
-START_ELO = settings["START_ELO"]
-SCALE     = settings["SCALE"]
-
+sheet = spreadsheet.worksheet("PingPongELOKARMA_matches")
+ 
 # =========================
 # COLUMN RENAME MAPS
 # =========================
@@ -82,77 +44,63 @@ MATCH_COL_RENAME = {
     "Team2_player2":  "Team 2 Player 2",
     "team1_punten":   "Points Team 1",
     "team2_punten":   "Points Team 2",
-    "datum":          "Date",
-    "match_type":     "Type"
+    "datum":          "Date"
 }
-
+ 
 LEADERBOARD_COL_RENAME = {
-    "speler":          "Player",
-    "elo":             "ELO (Overall)",
-    "elo_1v1":         "ELO (1v1)",
-    "elo_2v2":         "ELO (2v2)",
-    "highest_elo":     "Highest ELO",
-    "matches":         "Matches",
-    "wins":            "Wins",
-    "win %":           "Win %",
-    "matches_1v1":     "Matches (1v1)",
-    "wins_1v1":        "Wins (1v1)",
-    "win%_1v1":        "Win % (1v1)",
-    "matches_2v2":     "Matches (2v2)",
-    "wins_2v2":        "Wins (2v2)",
-    "win%_2v2":        "Win % (2v2)",
-    "biggest_win":     "Biggest Win (pts)",
-    "streak":          "Streak 🔥"
+    "speler":       "Player",
+    "elo":          "ELO Rating",
+    "highest_elo":  "Highest ELO",
+    "matches":      "Matches Played",
+    "wins":         "Matches Won",
+    "win %":        "Win %",
+    "biggest_win":  "Biggest Win (pts)",
+    "streak":       "Current Streak 🔥"
 }
-
+ 
+MATCHMAKING_COL_RENAME = {
+    "A":   "Player 1",
+    "B":   "Player 2",
+    "gap": "ELO Gap"
+}
+ 
 def display_matches(df):
     return df.rename(columns=MATCH_COL_RENAME)
-
+ 
 # =========================
 # USERS / LOGIN
 # =========================
 def load_users():
-    users_df = pd.DataFrame(spreadsheet.worksheet("USERS").get_all_records())
-    users_df["name"]  = users_df["name"].astype(str).str.strip()
-    users_df["pin"]   = users_df["pin"].astype(str).str.strip()
-    if "group" not in users_df.columns:
-        users_df["group"] = "default"
-    users_df["group"] = users_df["group"].astype(str).str.strip()
+    users_df = pd.DataFrame(sheet.spreadsheet.worksheet("USERS").get_all_records())
+    users_df["name"] = users_df["name"].astype(str).str.strip()
+    users_df["pin"]  = users_df["pin"].astype(str).str.strip()
     return users_df
-
+ 
 users_df = load_users()
-
+ 
 if "user" not in st.session_state:
     st.session_state.user = None
-
+ 
 if st.session_state.user is None:
     st.title("🔐 Login")
     name = st.text_input("Name")
     pin  = st.text_input("PIN", type="password")
-
+ 
     if st.button("Login"):
         match = users_df[
             (users_df["name"] == name) &
             (users_df["pin"]  == pin)
         ]
         if not match.empty:
-            st.session_state.user  = name
-            st.session_state.group = match.iloc[0]["group"]
+            st.session_state.user = name
             st.rerun()
         else:
             st.error("❌ Wrong name or PIN")
     st.stop()
-
-# Make sure group is set (for existing sessions after code update)
-if "group" not in st.session_state:
-    row = users_df[users_df["name"] == st.session_state.user]
-    st.session_state.group = row.iloc[0]["group"] if not row.empty else "default"
-
-current_group = st.session_state.group
-
+ 
 # Welcome banner
 st.markdown(f"👋 **Welcome, {st.session_state.user}!**")
-
+ 
 # =========================
 # HELPERS
 # =========================
@@ -161,7 +109,7 @@ def clean_name(name):
         return None
     name = str(name).strip()
     return name[:1].upper() + name[1:].lower()
-
+ 
 def get_players(row, prefix):
     players = []
     for key in [f"{prefix}_player1", f"{prefix}_player2"]:
@@ -173,28 +121,18 @@ def get_players(row, prefix):
             continue
         players.append(val)
     return players
-
+ 
 def expected(a, b):
-    return 1 / (1 + 10 ** ((b - a) / SCALE))
-
+    return 1 / (1 + 10 ** ((b - a) / 400))
+ 
 def valid_score(s1, s2):
     high = max(s1, s2)
     low  = min(s1, s2)
     return (high == 11 and low <= 9) or (high > 11 and high - low == 2)
-
+ 
 def user_matches(df):
     return df[df["created_by"] == st.session_state.user]
-
-def is_1v1(row):
-    t1 = get_players(row, "Team1")
-    t2 = get_players(row, "Team2")
-    return len(t1) == 1 and len(t2) == 1
-
-def is_2v2(row):
-    t1 = get_players(row, "Team1")
-    t2 = get_players(row, "Team2")
-    return len(t1) == 2 and len(t2) == 2
-
+ 
 # =========================
 # DATA LOADING / SAVING
 # =========================
@@ -212,166 +150,92 @@ def load_data():
             if c not in df.columns:
                 df[c] = None
         return df[cols]
-    except Exception:
+    except:
         return pd.DataFrame(columns=cols)
-
+ 
 def save_data(df):
     df = df.fillna("")
     sheet.clear()
     sheet.update([df.columns.tolist()] + df.astype(str).values.tolist())
-
+ 
 # =========================
-# GROUP FILTER
-# =========================
-def filter_by_group(df, users_df, group):
-    """Keep only matches where ALL players belong to the same group."""
-    group_players = set(users_df[users_df["group"] == group]["name"].tolist())
-    if not group_players:
-        return df
-    def all_in_group(row):
-        players = get_players(row, "Team1") + get_players(row, "Team2")
-        return all(p in group_players for p in players) if players else False
-    return df[df.apply(all_in_group, axis=1)].reset_index(drop=True)
-
-# =========================
-# ELO ENGINE  (overall + 1v1 + 2v2)
+# ELO ENGINE
 # =========================
 def compute_elo(df):
-    """Returns (current_df, hist_df, form_df) with overall, 1v1 and 2v2 ELO."""
     if df.empty:
-        empty_cur = pd.DataFrame(columns=[
-            "speler","elo","elo_1v1","elo_2v2",
-            "matches","wins","matches_1v1","wins_1v1","matches_2v2","wins_2v2","winrate"
-        ])
-        return empty_cur, pd.DataFrame(), pd.DataFrame()
-
+        return (
+            pd.DataFrame(columns=["speler","elo","matches","wins","winrate"]),
+            pd.DataFrame(),
+            pd.DataFrame()
+        )
+ 
     df = df.sort_values("wedstrijdId")
-
-    elo      = {}   # overall
-    elo_1v1  = {}
-    elo_2v2  = {}
-    stats    = {}
-    history  = []
-    form_log = []
-
+    elo     = {}
+    stats   = {}
+    history = []
+    form_log= []
+ 
     for _, r in df.iterrows():
         t1 = get_players(r, "Team1")
         t2 = get_players(r, "Team2")
         if not t1 or not t2:
             continue
+ 
         try:
             s1 = int(r["team1_punten"])
             s2 = int(r["team2_punten"])
-        except Exception:
+        except:
             continue
-
-        mtype = "1v1" if (len(t1) == 1 and len(t2) == 1) else "2v2"
-
+ 
         for p in t1 + t2:
             if p not in elo:
-                elo[p]     = START_ELO
-                elo_1v1[p] = None
-                elo_2v2[p] = None
-                stats[p]   = {
-                    "matches": 0, "wins": 0,
-                    "matches_1v1": 0, "wins_1v1": 0,
-                    "matches_2v2": 0, "wins_2v2": 0
-                }
-
-        e1_ov = sum(elo[p] for p in t1) / len(t1)
-        e2_ov = sum(elo[p] for p in t2) / len(t2)
-        res1  = 1 if s1 > s2 else 0
-        res2  = 1 - res1
-
+                elo[p]   = START_ELO
+                stats[p] = {"matches": 0, "wins": 0}
+ 
+        e1 = sum(elo[p] for p in t1) / len(t1)
+        e2 = sum(elo[p] for p in t2) / len(t2)
+ 
+        res1 = 1 if s1 > s2 else 0
+        res2 = 1 - res1
+ 
         for p in t1:
-            form_log.append((p, res1, mtype))
+            form_log.append((p, res1))
         for p in t2:
-            form_log.append((p, res2, mtype))
-
+            form_log.append((p, res2))
+ 
         diff = abs(s1 - s2)
         mult = math.log(diff + 1)
-        d_ov = K * mult * (res1 - expected(e1_ov, e2_ov))
-
-        # --- update overall ELO ---
+        d1   = K * mult * (res1 - expected(e1, e2))
+ 
         for p in t1:
-            elo[p]             += d_ov
+            elo[p]             += d1
             stats[p]["matches"] += 1
             stats[p]["wins"]    += res1
         for p in t2:
-            elo[p]             -= d_ov
+            elo[p]             -= d1
             stats[p]["matches"] += 1
             stats[p]["wins"]    += res2
-
-        # --- update 1v1 or 2v2 ELO ---
-        if mtype == "1v1":
-            for p in t1 + t2:
-                if elo_1v1[p] is None:
-                    elo_1v1[p] = START_ELO
-            e1_s = sum(elo_1v1[p] for p in t1) / len(t1)
-            e2_s = sum(elo_1v1[p] for p in t2) / len(t2)
-            d_s  = K * mult * (res1 - expected(e1_s, e2_s))
-            for p in t1:
-                elo_1v1[p]              += d_s
-                stats[p]["matches_1v1"] += 1
-                stats[p]["wins_1v1"]    += res1
-            for p in t2:
-                elo_1v1[p]              -= d_s
-                stats[p]["matches_1v1"] += 1
-                stats[p]["wins_1v1"]    += res2
-        else:
-            for p in t1 + t2:
-                if elo_2v2[p] is None:
-                    elo_2v2[p] = START_ELO
-            e1_s = sum(elo_2v2[p] for p in t1) / len(t1)
-            e2_s = sum(elo_2v2[p] for p in t2) / len(t2)
-            d_s  = K * mult * (res1 - expected(e1_s, e2_s))
-            for p in t1:
-                elo_2v2[p]              += d_s
-                stats[p]["matches_2v2"] += 1
-                stats[p]["wins_2v2"]    += res1
-            for p in t2:
-                elo_2v2[p]              -= d_s
-                stats[p]["matches_2v2"] += 1
-                stats[p]["wins_2v2"]    += res2
-
+ 
         for p in elo:
             history.append({
                 "wedstrijdId": r["wedstrijdId"],
                 "datum":       r["datum"],
                 "speler":      p,
-                "elo":         elo[p],
-                "elo_1v1":     elo_1v1[p],
-                "elo_2v2":     elo_2v2[p],
-                "match_type":  mtype
+                "elo":         elo[p]
             })
-
+ 
     hist_df = pd.DataFrame(history)
-    form_df = pd.DataFrame(form_log, columns=["speler", "result", "match_type"])
-
+    form_df = pd.DataFrame(form_log, columns=["speler","result"])
+ 
     current = []
     for p in elo:
         s  = stats[p]
         wr = s["wins"] / s["matches"] if s["matches"] else 0
-        wr1 = s["wins_1v1"] / s["matches_1v1"] if s["matches_1v1"] else None
-        wr2 = s["wins_2v2"] / s["matches_2v2"] if s["matches_2v2"] else None
-        current.append({
-            "speler":       p,
-            "elo":          elo[p],
-            "elo_1v1":      elo_1v1[p],
-            "elo_2v2":      elo_2v2[p],
-            "matches":      s["matches"],
-            "wins":         s["wins"],
-            "winrate":      wr,
-            "matches_1v1":  s["matches_1v1"],
-            "wins_1v1":     s["wins_1v1"],
-            "winrate_1v1":  wr1,
-            "matches_2v2":  s["matches_2v2"],
-            "wins_2v2":     s["wins_2v2"],
-            "winrate_2v2":  wr2,
-        })
-
+        current.append({"speler": p, "elo": elo[p],
+                        "matches": s["matches"], "wins": s["wins"], "winrate": wr})
+ 
     return pd.DataFrame(current), hist_df, form_df
-
+ 
 # =========================
 # EXTRA STAT HELPERS
 # =========================
@@ -387,12 +251,12 @@ def compute_streaks(form_df):
                 break
         streaks[player] = streak
     return streaks
-
+ 
 def compute_highest_elo(hist_df):
     if hist_df.empty:
         return {}
     return hist_df.groupby("speler")["elo"].max().to_dict()
-
+ 
 def compute_biggest_win(df):
     biggest = {}
     for _, r in df.iterrows():
@@ -402,7 +266,7 @@ def compute_biggest_win(df):
             continue
         try:
             s1, s2 = int(r["team1_punten"]), int(r["team2_punten"])
-        except Exception:
+        except:
             continue
         diff    = abs(s1 - s2)
         winners = t1 if s1 > s2 else t2
@@ -410,63 +274,17 @@ def compute_biggest_win(df):
             if p not in biggest or diff > biggest[p]:
                 biggest[p] = diff
     return biggest
-
-# =========================
-# FIXED-AXIS CHART HELPER
-# =========================
-def fixed_line_chart(data: pd.DataFrame, title: str = ""):
-    """
-    Renders a Plotly line chart with fixed axes (no drag-to-zoom).
-    data: DataFrame with index as x-axis and columns as series.
-    """
-    import plotly.graph_objects as go
-
-    fig = go.Figure()
-    for col in data.columns:
-        series = data[col].dropna()
-        fig.add_trace(go.Scatter(
-            x=series.index,
-            y=series.values,
-            mode="lines+markers",
-            name=str(col),
-            connectgaps=False
-        ))
-
-    all_vals = data.values.flatten()
-    all_vals = [v for v in all_vals if not (v != v)]  # remove NaN
-    if all_vals:
-        y_min = min(all_vals)
-        y_max = max(all_vals)
-        margin = max((y_max - y_min) * 0.10, 20)
-    else:
-        y_min, y_max, margin = 800, 1200, 50
-
-    fig.update_layout(
-        title=title,
-        dragmode=False,
-        xaxis=dict(fixedrange=True),
-        yaxis=dict(
-            fixedrange=True,
-            range=[y_min - margin, y_max + margin]
-        ),
-        height=380,
-        margin=dict(l=10, r=10, t=40 if title else 10, b=10),
-        legend=dict(orientation="h", y=-0.15)
-    )
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-
+ 
 # =========================
 # LOAD & ENRICH
 # =========================
-df_all   = load_data()
-df       = filter_by_group(df_all, users_df, current_group)
-
+df = load_data()
 current_df, hist_df, form_df = compute_elo(df)
-
+ 
 streaks          = compute_streaks(form_df)
 highest_elo_dict = compute_highest_elo(hist_df)
 biggest_win_dict = compute_biggest_win(df)
-
+ 
 if not current_df.empty:
     current_df["streak"]      = current_df["speler"].map(lambda p: streaks.get(p, 0))
     current_df["highest_elo"] = current_df["speler"].map(
@@ -476,30 +294,20 @@ if not current_df.empty:
         )
     )
     current_df["biggest_win"] = current_df["speler"].map(lambda p: biggest_win_dict.get(p, 0))
-
-# Player list from USERS sheet (group-filtered, always up to date)
-players_list = sorted(
-    users_df[users_df["group"] == current_group]["name"].tolist()
-)
-
-def get_elo(player, mode="overall"):
+ 
+# Player list from USERS sheet (always up to date)
+players_list = sorted(users_df["name"].tolist())
+ 
+def get_elo(player):
     row = current_df[current_df["speler"] == player]
-    if row.empty:
-        return START_ELO
-    if mode == "1v1":
-        val = row["elo_1v1"].iloc[0]
-        return float(val) if val is not None and str(val) != "None" and not (val != val) else START_ELO
-    if mode == "2v2":
-        val = row["elo_2v2"].iloc[0]
-        return float(val) if val is not None and str(val) != "None" and not (val != val) else START_ELO
-    return float(row["elo"].iloc[0])
-
+    return START_ELO if row.empty else float(row["elo"].iloc[0])
+ 
 # =========================
 # BUILD TABS
 # =========================
 st.title("🏓🔥 KARMA Ping Pong Leaderboard 🏓🔥")
 st.subheader("Become the KARMA Ping Pong GOAT!")
-
+ 
 is_arthur  = st.session_state.user == "Arthur"
 tab_labels = [
     "➕ Matches",
@@ -510,371 +318,331 @@ tab_labels = [
     "👥 2v2 Matchmaking",
     "🎯 1v1 Win Probability",
     "🎯 2v2 Win Probability",
-    "⚙️ Settings",
 ]
 if is_arthur:
-    tab_labels.append("🔧 Manage Players")
-
-tabs     = st.tabs(tab_labels)
-tab1     = tabs[0]
-tab2     = tabs[1]
-tab3     = tabs[2]
-tab4     = tabs[3]
-tab5     = tabs[4]
-tab6     = tabs[5]
-tab7     = tabs[6]
-tab8     = tabs[7]
-tab_set  = tabs[8]
-tab_admin = tabs[9] if is_arthur else None
-
+    tab_labels.append("⚙️ Manage Players")
+ 
+tabs = st.tabs(tab_labels)
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = tabs[:8]
+tab_admin = tabs[8] if is_arthur else None
+ 
 # =========================
 # TAB 1 — MATCHES
 # =========================
 with tab1:
+    # ---- Add Match ----
     st.subheader("➕ Add Match")
-
+ 
     col1, col2 = st.columns(2)
-
-    t1_p1_sel = col1.selectbox("Team 1 — Player 1",           [""] + players_list, key="t1p1")
-    t1_p2_sel = col1.selectbox("Team 1 — Player 2 (optional)", [""] + players_list, key="t1p2")
+ 
+    t1_p1_sel = col1.selectbox("Team 1 — Player 1",          [""] + players_list, key="t1p1")
+    t1_p2_sel = col1.selectbox("Team 1 — Player 2 (optional)",[""] + players_list, key="t1p2")
     s1        = col1.number_input("Points Team 1", 0, 30, 11)
-
-    t2_p1_sel = col2.selectbox("Team 2 — Player 1",           [""] + players_list, key="t2p1")
-    t2_p2_sel = col2.selectbox("Team 2 — Player 2 (optional)", [""] + players_list, key="t2p2")
+ 
+    t2_p1_sel = col2.selectbox("Team 2 — Player 1",          [""] + players_list, key="t2p1")
+    t2_p2_sel = col2.selectbox("Team 2 — Player 2 (optional)",[""] + players_list, key="t2p2")
     s2        = col2.number_input("Points Team 2", 0, 30, 11)
-
+ 
+    # No future dates allowed
     date = st.date_input("Match Date", value=datetime.date.today(),
                          max_value=datetime.date.today())
-
+ 
     if st.button("Add match 🚀"):
         t1_p1_val = clean_name(t1_p1_sel) if t1_p1_sel else None
         t1_p2_val = clean_name(t1_p2_sel) if t1_p2_sel else None
         t2_p1_val = clean_name(t2_p1_sel) if t2_p1_sel else None
         t2_p2_val = clean_name(t2_p2_sel) if t2_p2_sel else None
-
+ 
         if not t1_p1_val or not t2_p1_val:
             st.error("❌ At least Player 1 for each team is required")
         elif not valid_score(s1, s2):
             st.error("❌ Invalid score — check ping pong rules (e.g. 11–x or deuce)")
         else:
-            new_id = 1 if df_all.empty else int(df_all["wedstrijdId"].max()) + 1
+            new_id = 1 if df.empty else int(df["wedstrijdId"].max()) + 1
             new = pd.DataFrame([{
-                "wedstrijdId":   new_id,
-                "created_by":    st.session_state.user,
-                "Team1_player1": t1_p1_val,
-                "Team1_player2": t1_p2_val or "",
-                "Team2_player1": t2_p1_val,
-                "Team2_player2": t2_p2_val or "",
-                "team1_punten":  s1,
-                "team2_punten":  s2,
-                "datum":         str(date)
+                "wedstrijdId":    new_id,
+                "created_by":     st.session_state.user,
+                "Team1_player1":  t1_p1_val,
+                "Team1_player2":  t1_p2_val or "",
+                "Team2_player1":  t2_p1_val,
+                "Team2_player2":  t2_p2_val or "",
+                "team1_punten":   s1,
+                "team2_punten":   s2,
+                "datum":          str(date)
             }])
-            df_new = pd.concat([df_all, new], ignore_index=True)
-            save_data(df_new)
+            df = pd.concat([df, new], ignore_index=True)
+            save_data(df)
             st.success(f"✅ Match #{new_id} added successfully!")
             st.cache_data.clear()
             time.sleep(0.5)
             st.rerun()
-
+ 
     st.divider()
-
+ 
+    # ---- All Matches ----
     st.subheader("📋 All Matches")
     st.dataframe(
         display_matches(df.sort_values("wedstrijdId", ascending=False)),
         use_container_width=True,
         hide_index=True
     )
-
+ 
     st.divider()
-
+ 
+    # ---- Delete Match ----
     st.subheader("🗑️ Delete a Match")
     user_df = user_matches(df)
-
+ 
     if user_df.empty:
         st.info("You have no matches to delete.")
     else:
         st.write("Your matches:")
         st.dataframe(display_matches(user_df.sort_values("wedstrijdId", ascending=False)),
                      use_container_width=True, hide_index=True)
-
+ 
         del_id    = st.selectbox("Select Match ID to delete",
                                  user_df.sort_values("wedstrijdId", ascending=False)["wedstrijdId"].tolist())
         match_row = user_df[user_df["wedstrijdId"] == del_id].iloc[0]
-
+ 
         st.warning("⚠️ Match selected for deletion:")
         st.dataframe(display_matches(pd.DataFrame([match_row])),
                      use_container_width=True, hide_index=True)
-
+ 
         if "last_delete_id" not in st.session_state:
             st.session_state.last_delete_id = None
         if st.session_state.last_delete_id != del_id:
-            st.session_state.confirm_delete = False
-            st.session_state.last_delete_id = del_id
-
+            st.session_state.confirm_delete  = False
+            st.session_state.last_delete_id  = del_id
+ 
         confirm = st.checkbox("I confirm I want to delete this match", key="confirm_delete")
-
+ 
         if st.button("Delete ❌"):
             if confirm:
-                df_new = df_all[df_all["wedstrijdId"] != del_id]
-                save_data(df_new)
+                df = df[df["wedstrijdId"] != del_id]
+                save_data(df)
                 st.cache_data.clear()
                 st.success(f"Match {del_id} deleted ✅")
                 st.rerun()
             else:
                 st.error("Please tick the confirmation box first ⚠️")
-
+ 
 # =========================
 # TAB 2 — LEADERBOARD
 # =========================
 with tab2:
     st.subheader("🏆 Leaderboard")
-
+ 
     if not current_df.empty:
         lb = current_df.copy()
         lb["elo"]         = lb["elo"].round(0).astype(int)
         lb["highest_elo"] = lb["highest_elo"].round(0).astype(int)
         lb["biggest_win"] = lb["biggest_win"].astype(int)
         lb["win %"]       = (lb["winrate"] * 100).round(1)
-        lb["win%_1v1"]    = lb["winrate_1v1"].apply(
-            lambda x: f"{x*100:.1f}%" if x is not None and str(x) != "None" and not (x != x) else "–"
+ 
+        lb_display = (
+            lb.sort_values("elo", ascending=False)
+            [[
+                "speler", "elo", "highest_elo",
+                "matches", "wins", "win %",
+                "biggest_win", "streak"
+            ]]
+            .rename(columns=LEADERBOARD_COL_RENAME)
         )
-        lb["win%_2v2"]    = lb["winrate_2v2"].apply(
-            lambda x: f"{x*100:.1f}%" if x is not None and str(x) != "None" and not (x != x) else "–"
-        )
-        lb["elo_1v1_disp"] = lb["elo_1v1"].apply(
-            lambda x: int(round(x)) if x is not None and str(x) != "None" and not (x != x) else "–"
-        )
-        lb["elo_2v2_disp"] = lb["elo_2v2"].apply(
-            lambda x: int(round(x)) if x is not None and str(x) != "None" and not (x != x) else "–"
-        )
-
-        view = st.radio("View", ["Overall", "1v1", "2v2"], horizontal=True, key="lb_view")
-
-        if view == "Overall":
-            lb_display = (
-                lb.sort_values("elo", ascending=False)
-                [["speler","elo","highest_elo","matches","wins","win %","biggest_win","streak"]]
-                .rename(columns=LEADERBOARD_COL_RENAME)
-            )
-        elif view == "1v1":
-            lb_1 = lb[lb["matches_1v1"] > 0].sort_values("elo_1v1", ascending=False)
-            lb_1 = lb_1.rename(columns={"elo_1v1_disp": "ELO (1v1)"})
-            lb_display = lb_1[["speler","elo_1v1_disp","matches_1v1","wins_1v1","win%_1v1","streak"]].rename(columns={
-                "speler": "Player", "elo_1v1_disp": "ELO (1v1)",
-                "matches_1v1": "Matches", "wins_1v1": "Wins",
-                "win%_1v1": "Win %", "streak": "Streak 🔥"
-            })
-        else:
-            lb_2 = lb[lb["matches_2v2"] > 0].sort_values("elo_2v2", ascending=False)
-            lb_display = lb_2[["speler","elo_2v2_disp","matches_2v2","wins_2v2","win%_2v2","streak"]].rename(columns={
-                "speler": "Player", "elo_2v2_disp": "ELO (2v2)",
-                "matches_2v2": "Matches", "wins_2v2": "Wins",
-                "win%_2v2": "Win %", "streak": "Streak 🔥"
-            })
-
         st.dataframe(lb_display, hide_index=True, use_container_width=True)
     else:
         st.info("No data yet.")
-
+ 
 # =========================
 # TAB 3 — STATS
 # =========================
 with tab3:
     st.subheader("📊 Global Stats")
-
+ 
     if not current_df.empty:
-        view3 = st.radio("Mode", ["Overall", "1v1", "2v2"], horizontal=True, key="stats_view")
-
-        if view3 == "Overall":
-            sub = current_df
-            elo_col = "elo"
-            matches_col = "matches"
-            wins_col = "wins"
-        elif view3 == "1v1":
-            sub = current_df[current_df["matches_1v1"] > 0].copy()
-            sub["elo"] = sub["elo_1v1"]
-            elo_col = "elo"
-            matches_col = "matches_1v1"
-            wins_col = "wins_1v1"
-        else:
-            sub = current_df[current_df["matches_2v2"] > 0].copy()
-            sub["elo"] = sub["elo_2v2"]
-            elo_col = "elo"
-            matches_col = "matches_2v2"
-            wins_col = "wins_2v2"
-
-        df_mode = df if view3 == "Overall" else df[df.apply(
-            lambda r: (is_1v1(r) if view3 == "1v1" else is_2v2(r)), axis=1
-        )]
-
         col1, col2, col3 = st.columns(3)
-        col1.metric("Players",  len(sub))
-        col2.metric("Matches",  len(df_mode))
-        col3.metric("Avg ELO",  int(sub[elo_col].mean()) if not sub.empty else "–")
-
-        if not sub.empty:
-            top_wins    = sub.sort_values(wins_col,     ascending=False).iloc[0]
-            top_elo     = sub.sort_values(elo_col,      ascending=False).iloc[0]
-            top_matches = sub.sort_values(matches_col,  ascending=False).iloc[0]
-
-            st.markdown(f"##### 🏅 Most Wins: **{top_wins['speler']}** ({int(top_wins[wins_col])} wins)")
-            st.markdown(f"##### 🔥 Highest Current ELO: **{top_elo['speler']}** ({int(top_elo[elo_col])})")
-            st.markdown(f"##### 🎯 Most Matches Played: **{top_matches['speler']}** ({int(top_matches[matches_col])} matches)")
-
-        if view3 == "Overall":
-            top_highest = current_df.sort_values("highest_elo", ascending=False).iloc[0]
-            st.markdown(f"##### 👑 Highest Ever ELO: **{top_highest['speler']}** ({int(top_highest['highest_elo'])})")
-
-        # Biggest score gap
-        if not df_mode.empty:
-            df_copy = df_mode.copy()
+        col1.metric("Players",  len(current_df))
+        col2.metric("Matches",  len(df))
+        col3.metric("Avg ELO",  int(current_df["elo"].mean()))
+ 
+        top_wins    = current_df.sort_values("wins",        ascending=False).iloc[0]
+        top_elo     = current_df.sort_values("elo",         ascending=False).iloc[0]
+        top_highest = current_df.sort_values("highest_elo", ascending=False).iloc[0]
+        top_matches = current_df.sort_values("matches",     ascending=False).iloc[0]
+ 
+        st.markdown(f"##### 🏅 Most Wins: **{top_wins['speler']}** ({top_wins['wins']} wins)")
+        st.markdown(f"##### 🔥 Highest Current ELO: **{top_elo['speler']}** ({int(top_elo['elo'])})")
+        st.markdown(f"##### 👑 Highest Ever ELO:    **{top_highest['speler']}** ({int(top_highest['highest_elo'])})")
+        st.markdown(f"##### 🎯 Most Matches Played: **{top_matches['speler']}** ({top_matches['matches']} matches)")
+ 
+        # Biggest score difference
+        if not df.empty:
+            df_copy = df.copy()
             df_copy["diff"] = (
                 df_copy["team1_punten"].astype(float) - df_copy["team2_punten"].astype(float)
             ).abs()
-            bm     = df_copy.sort_values("diff", ascending=False).iloc[0]
+            bm = df_copy.sort_values("diff", ascending=False).iloc[0]
             t1_str = " & ".join(filter(lambda x: x and x.lower() != "nan",
                                        [str(bm["Team1_player1"]), str(bm["Team1_player2"])]))
             t2_str = " & ".join(filter(lambda x: x and x.lower() != "nan",
                                        [str(bm["Team2_player1"]), str(bm["Team2_player2"])]))
-            st.markdown(f"##### 💥 Biggest Score Gap: **{t1_str}** vs **{t2_str}** "
-                        f"({int(bm['team1_punten'])}–{int(bm['team2_punten'])})")
-
-        # Biggest upset
-        if not df_mode.empty:
+            st.markdown(f"##### 💥 Biggest Score Gap:  **{t1_str}** vs **{t2_str}** "
+                     f"({int(bm['team1_punten'])}–{int(bm['team2_punten'])})")
+ 
+        # Biggest upset (lowest pre-match win probability for the winner)
+        if not df.empty:
             upset_data  = []
             elo_running = {}
-            for _, r in df_mode.sort_values("wedstrijdId").iterrows():
+            for _, r in df.sort_values("wedstrijdId").iterrows():
                 t1_players = get_players(r, "Team1")
                 t2_players = get_players(r, "Team2")
                 if not t1_players or not t2_players:
                     continue
                 try:
                     s1_r, s2_r = int(r["team1_punten"]), int(r["team2_punten"])
-                except Exception:
+                except:
                     continue
+ 
                 for p in t1_players + t2_players:
                     if p not in elo_running:
                         elo_running[p] = START_ELO
-                e1_r    = sum(elo_running[p] for p in t1_players) / len(t1_players)
-                e2_r    = sum(elo_running[p] for p in t2_players) / len(t2_players)
+ 
+                e1_r = sum(elo_running[p] for p in t1_players) / len(t1_players)
+                e2_r = sum(elo_running[p] for p in t2_players) / len(t2_players)
                 prob_t1 = expected(e1_r, e2_r)
                 t1_won  = s1_r > s2_r
+ 
                 if t1_won and prob_t1 < 0.5:
-                    upset_data.append({"match_id": r["wedstrijdId"], "winner": " & ".join(t1_players),
-                                       "loser": " & ".join(t2_players), "win_prob": prob_t1,
-                                       "score": f"{s1_r}–{s2_r}"})
+                    upset_data.append({
+                        "match_id": r["wedstrijdId"],
+                        "winner":   " & ".join(t1_players),
+                        "loser":    " & ".join(t2_players),
+                        "win_prob": prob_t1,
+                        "score":    f"{s1_r}–{s2_r}"
+                    })
                 elif not t1_won and prob_t1 > 0.5:
-                    upset_data.append({"match_id": r["wedstrijdId"], "winner": " & ".join(t2_players),
-                                       "loser": " & ".join(t1_players), "win_prob": 1 - prob_t1,
-                                       "score": f"{s1_r}–{s2_r}"})
-                res1_r  = 1 if t1_won else 0
-                diff_r  = abs(s1_r - s2_r)
-                mult_r  = math.log(diff_r + 1)
-                d1_r    = K * mult_r * (res1_r - expected(e1_r, e2_r))
+                    upset_data.append({
+                        "match_id": r["wedstrijdId"],
+                        "winner":   " & ".join(t2_players),
+                        "loser":    " & ".join(t1_players),
+                        "win_prob": 1 - prob_t1,
+                        "score":    f"{s1_r}–{s2_r}"
+                    })
+ 
+                # Update running ELO
+                res1_r = 1 if t1_won else 0
+                diff_r = abs(s1_r - s2_r)
+                mult_r = math.log(diff_r + 1)
+                d1_r   = K * mult_r * (res1_r - expected(e1_r, e2_r))
                 for p in t1_players:
                     elo_running[p] += d1_r
                 for p in t2_players:
                     elo_running[p] -= d1_r
-
+ 
             if upset_data:
                 bu = min(upset_data, key=lambda x: x["win_prob"])
                 st.markdown(f"##### 😱 Biggest Upset: **{bu['winner']}** beat **{bu['loser']}** "
-                            f"with only **{bu['win_prob']*100:.1f}%** win chance "
-                            f"(Match #{bu['match_id']}, {bu['score']})")
-
-        # ---- ELO charts ----
+                         f"with only **{bu['win_prob']*100:.1f}%** win chance "
+                         f"(Match #{bu['match_id']}, {bu['score']})")
+ 
+        # =========================
+        # 📈 ELO progress per match
+        # =========================
         st.subheader("📈 ELO progress per match")
+        
         if not hist_df.empty:
-            all_players   = sorted(hist_df["speler"].unique())
-            show_all      = st.checkbox("All players", value=False, key="stats_showall")
-            sel_players   = st.multiselect("Select players", all_players, default=all_players, key="stats_sel")
+            all_players = sorted(hist_df["speler"].unique())
+        
+            show_all = st.checkbox("All players", value=False)
+        
+            selected_players = st.multiselect(
+                "Select players",
+                all_players,
+                default=all_players
+            )
+        
             if show_all:
-                sel_players = all_players
-            if not sel_players:
-                st.warning("Select at least one player.")
-            else:
-                if view3 == "Overall":
-                    elo_pivot_col = "elo"
-                elif view3 == "1v1":
-                    elo_pivot_col = "elo_1v1"
-                else:
-                    elo_pivot_col = "elo_2v2"
-
-                fh = hist_df[hist_df["speler"].isin(sel_players)]
-                if view3 != "Overall":
-                    fh = fh[fh["match_type"] == view3]
-
-                pivot = fh.pivot_table(index="wedstrijdId", columns="speler", values=elo_pivot_col)
-                fixed_line_chart(pivot, f"ELO ({view3}) per match")
-
-                st.subheader("📅 ELO progress per date")
-                latest = (
-                    hist_df[hist_df["speler"].isin(sel_players)]
-                    .sort_values("wedstrijdId")
-                    .groupby(["datum", "speler"])
-                    .last()
-                    .reset_index()
+                selected_players = all_players
+        
+            if not selected_players:
+                st.warning("Select at least one player")
+                st.stop()
+        
+            filtered_hist = hist_df[hist_df["speler"].isin(selected_players)]
+        
+            st.line_chart(
+                filtered_hist.pivot_table(
+                    index="wedstrijdId",
+                    columns="speler",
+                    values="elo"
                 )
-                if view3 != "Overall":
-                    latest = latest[latest["match_type"] == view3]
-                pivot2 = latest.pivot(index="datum", columns="speler", values=elo_pivot_col)
-                fixed_line_chart(pivot2, f"ELO ({view3}) per date")
+            )
+        
+        # =========================
+        # 📅 ELO progress per date
+        # =========================
+        st.subheader("📅 ELO progress per date")
+        
+        if not hist_df.empty:
+            latest = (
+                hist_df.sort_values("wedstrijdId")
+                .groupby(["datum", "speler"])
+                .last()
+                .reset_index()
+            )
+        
+            filtered_latest = latest[latest["speler"].isin(selected_players)]
+        
+            st.line_chart(
+                filtered_latest.pivot(
+                    index="datum",
+                    columns="speler",
+                    values="elo"
+                )
+            )
+ 
     else:
         st.info("No data yet.")
-
+ 
 # =========================
 # TAB 4 — PLAYER
 # =========================
 with tab4:
     st.subheader("👤 Player Overview")
-
+ 
     if not current_df.empty:
         player      = st.selectbox("Select player", sorted(current_df["speler"].tolist()))
-        p_row       = current_df[current_df["speler"] == player].iloc[0]
+        p           = current_df[current_df["speler"] == player].iloc[0]
         player_hist = hist_df[hist_df["speler"] == player] if not hist_df.empty else pd.DataFrame()
-        highest_elo = player_hist["elo"].max() if not player_hist.empty else p_row["elo"]
-
-        # ---- Key metrics ----
-        col1, col2, col3, col4, col5, col6 = st.columns(6)
-        col1.metric("ELO (Overall)", int(p_row["elo"]))
-        col2.metric("Highest ELO",   int(highest_elo))
-
-        elo1v1_val = p_row["elo_1v1"]
-        elo2v2_val = p_row["elo_2v2"]
-        col3.metric("ELO (1v1)",  int(round(elo1v1_val)) if elo1v1_val is not None and str(elo1v1_val) != "None" and not (elo1v1_val != elo1v1_val) else "–")
-        col4.metric("ELO (2v2)",  int(round(elo2v2_val)) if elo2v2_val is not None and str(elo2v2_val) != "None" and not (elo2v2_val != elo2v2_val) else "–")
-        col5.metric("Matches",    p_row["matches"])
-        col6.metric("Win %",      f"{p_row['winrate']*100:.1f}%")
-
-        # Sub-stats
-        c1, c2 = st.columns(2)
-        c1.markdown(f"**1v1:** {int(p_row['matches_1v1'])} matches — {int(p_row['wins_1v1'])} wins — "
-                    f"{p_row['winrate_1v1']*100:.1f}% win rate" if p_row['matches_1v1'] > 0 else "**1v1:** geen wedstrijden")
-        c2.markdown(f"**2v2:** {int(p_row['matches_2v2'])} matches — {int(p_row['wins_2v2'])} wins — "
-                    f"{p_row['winrate_2v2']*100:.1f}% win rate" if p_row['matches_2v2'] > 0 else "**2v2:** geen wedstrijden")
-
-        # ---- Form ----
+        highest_elo = player_hist["elo"].max() if not player_hist.empty else p["elo"]
+ 
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Current ELO", int(p["elo"]))
+        col2.metric("Highest ELO", int(highest_elo))
+        col3.metric("Matches",     p["matches"])
+        col4.metric("Win %",       f"{p['winrate']*100:.1f}%")
+ 
         st.subheader("🔥 Form (last 10 matches)")
         f = form_df[form_df["speler"] == player].tail(10) if not form_df.empty else pd.DataFrame()
         form_icons = "".join(["🟢" if x == 1 else "🔴" for x in f["result"]]) if not f.empty else "–"
         st.write(form_icons)
-
-        player_results = form_df[form_df["speler"] == player]["result"].tolist() if not form_df.empty else []
-        current_streak = 0
+ 
+        # Current win streak
+        player_results  = form_df[form_df["speler"] == player]["result"].tolist() if not form_df.empty else []
+        current_streak  = 0
         for res in reversed(player_results):
             if res == 1:
                 current_streak += 1
             else:
                 break
         st.markdown(f"##### 🔥 Current Win Streak: **{current_streak}**")
-
-        # ---- Head-to-head ----
+ 
+        # Head-to-head stats
         st.subheader("📊 Head-to-Head Stats")
         opponents_count = {}
         partners_count  = {}
         beaten_count    = {}
         lost_to_count   = {}
-
+ 
         for _, row in df.iterrows():
             t1_r = get_players(row, "Team1")
             t2_r = get_players(row, "Team2")
@@ -882,138 +650,102 @@ with tab4:
                 continue
             try:
                 s1_r, s2_r = int(row["team1_punten"]), int(row["team2_punten"])
-            except Exception:
+            except:
                 continue
-
+ 
             if player in t1_r:
                 my_team, opp_team, won = t1_r, t2_r, s1_r > s2_r
             elif player in t2_r:
                 my_team, opp_team, won = t2_r, t1_r, s2_r > s1_r
             else:
                 continue
-
+ 
             for partner in my_team:
                 if partner != player:
                     partners_count[partner] = partners_count.get(partner, 0) + 1
+ 
             for opp in opp_team:
                 opponents_count[opp] = opponents_count.get(opp, 0) + 1
                 if won:
                     beaten_count[opp]  = beaten_count.get(opp, 0) + 1
                 else:
                     lost_to_count[opp] = lost_to_count.get(opp, 0) + 1
-
-        c1, c2 = st.columns(2)
-        with c1:
+ 
+        col1, col2 = st.columns(2)
+        with col1:
             if opponents_count:
                 mpa = max(opponents_count, key=opponents_count.get)
                 st.markdown(f"##### 🎯 Most played against: **{mpa}** ({opponents_count[mpa]}×)")
             if partners_count:
                 mp = max(partners_count, key=partners_count.get)
                 st.markdown(f"##### 🤝 Favourite 2v2 partner: **{mp}** ({partners_count[mp]}×)")
-        with c2:
+        with col2:
             if beaten_count:
                 mb = max(beaten_count, key=beaten_count.get)
                 st.markdown(f"##### 😤 Most beaten: **{mb}** ({beaten_count[mb]}×)")
             if lost_to_count:
                 ml = max(lost_to_count, key=lost_to_count.get)
                 st.markdown(f"##### 😰 Lost to most: **{ml}** ({lost_to_count[ml]}×)")
-
-        # ---- ELO charts (only own matches on x-axis) ----
+ 
+        st.subheader("📈 ELO evolution per match")
         if not player_hist.empty:
-            # Get match IDs this player actually played in
-            own_match_ids = set()
-            for _, row in df.iterrows():
-                if player in get_players(row, "Team1") + get_players(row, "Team2"):
-                    own_match_ids.add(row["wedstrijdId"])
-
-            own_hist = player_hist[player_hist["wedstrijdId"].isin(own_match_ids)].sort_values("wedstrijdId")
-
-            st.subheader("📈 ELO evolution (Overall)")
-            ov = own_hist.set_index("wedstrijdId")[["elo"]]
-            fixed_line_chart(ov, "Overall ELO per match played")
-
-            has_1v1 = own_hist["elo_1v1"].notna().any()
-            has_2v2 = own_hist["elo_2v2"].notna().any()
-
-            if has_1v1:
-                st.subheader("📈 ELO evolution (1v1)")
-                d1 = own_hist[own_hist["match_type"] == "1v1"].set_index("wedstrijdId")[["elo_1v1"]]
-                fixed_line_chart(d1, "1v1 ELO per match played")
-
-            if has_2v2:
-                st.subheader("📈 ELO evolution (2v2)")
-                d2 = own_hist[own_hist["match_type"] == "2v2"].set_index("wedstrijdId")[["elo_2v2"]]
-                fixed_line_chart(d2, "2v2 ELO per match played")
-
-            st.subheader("📅 ELO per date")
-            latest = (own_hist.sort_values("wedstrijdId")
-                      .groupby("datum").last().reset_index())
-            pivot_d = latest.set_index("datum")[["elo"]]
-            fixed_line_chart(pivot_d, "Overall ELO per date")
-
-        # ---- Match history table ----
-        st.subheader("📋 All matches played")
-        played = df[df.apply(
-            lambda row: player in get_players(row, "Team1") + get_players(row, "Team2"), axis=1
-        )].sort_values("wedstrijdId", ascending=False)
-        st.dataframe(display_matches(played), use_container_width=True, hide_index=True)
-
+            st.line_chart(player_hist.set_index("wedstrijdId")["elo"])
+ 
+        st.subheader("📅 ELO evolution per date")
+        if not player_hist.empty:
+            latest = (player_hist.sort_values("wedstrijdId")
+                      .groupby(["datum","speler"]).last().reset_index())
+            st.line_chart(latest.pivot(index="datum", columns="speler", values="elo"))
     else:
         st.info("No data yet.")
-
+ 
 # =========================
 # TAB 5 — 1v1 MATCHMAKING
 # =========================
 with tab5:
     st.subheader("🧠 1v1 Matchmaking — Closest ELO Pairs")
-    st.caption("Based on 1v1 ELO (or overall ELO if no 1v1 games yet)")
-
+ 
     if not current_df.empty:
-        mm1 = current_df.copy()
-        mm1["elo_use"] = mm1.apply(
-            lambda r: r["elo_1v1"] if r["elo_1v1"] is not None and str(r["elo_1v1"]) != "None"
-                       and not (r["elo_1v1"] != r["elo_1v1"]) else r["elo"],
-            axis=1
-        )
-        sorted_players = mm1.sort_values("elo_use")
+        sorted_players = current_df.sort_values("elo")
         suggestions    = []
+ 
         for i in range(len(sorted_players) - 1):
             low  = sorted_players.iloc[i]
             high = sorted_players.iloc[i + 1]
             suggestions.append({
-                "Player 1":       low["speler"],
-                "Player 2":       high["speler"],
-                "ELO Gap":        int(high["elo_use"] - low["elo_use"]),
-                "Win % Player 1": f"{expected(float(low['elo_use']), float(high['elo_use']))*100:.1f}%",
-                "Win % Player 2": f"{expected(float(high['elo_use']), float(low['elo_use']))*100:.1f}%",
+                "Player 1": low["speler"],
+                "Player 2": high["speler"],
+                "ELO Gap":  int(high["elo"] - low["elo"])
             })
+ 
         st.dataframe(pd.DataFrame(suggestions), hide_index=True, use_container_width=True)
     else:
         st.info("No data yet.")
-
+ 
 # =========================
 # TAB 6 — 2v2 MATCHMAKING
 # =========================
 with tab6:
     st.subheader("👥 2v2 Matchmaking — Balanced Teams")
     st.write("Showing all combinations where Team 1 has a **40–60% win chance** (sorted by balance)")
-    st.caption("Based on 2v2 ELO (or overall ELO if no 2v2 games yet)")
-
+ 
     if not current_df.empty and len(current_df) >= 4:
-        all_p   = current_df["speler"].tolist()
-        combos  = []
-        seen    = set()
-
-        for team1 in combinations(all_p, 2):
-            remaining = [p for p in all_p if p not in team1]
+        all_players = current_df["speler"].tolist()
+        combos      = []
+        seen        = set()
+ 
+        for team1 in combinations(all_players, 2):
+            remaining = [p for p in all_players if p not in team1]
             for team2 in combinations(remaining, 2):
                 key = frozenset([frozenset(team1), frozenset(team2)])
                 if key in seen:
                     continue
                 seen.add(key)
-                e1   = (get_elo(team1[0], "2v2") + get_elo(team1[1], "2v2")) / 2
-                e2   = (get_elo(team2[0], "2v2") + get_elo(team2[1], "2v2")) / 2
+ 
+                e1   = (get_elo(team1[0]) + get_elo(team1[1])) / 2
+                e2   = (get_elo(team2[0]) + get_elo(team2[1])) / 2
                 prob = expected(e1, e2)
+ 
                 if 0.40 <= prob <= 0.60:
                     combos.append({
                         "Team 1 Player 1": team1[0],
@@ -1023,301 +755,113 @@ with tab6:
                         "Team 1 Win %":    round(prob * 100, 1),
                         "Team 2 Win %":    round((1 - prob) * 100, 1),
                     })
-
+ 
         if combos:
-            st.dataframe(pd.DataFrame(combos).sort_values("Team 1 Win %"),
-                         hide_index=True, use_container_width=True)
+            combos_df = pd.DataFrame(combos).sort_values("Team 1 Win %")
+            st.dataframe(combos_df, hide_index=True, use_container_width=True)
         else:
             st.info("No balanced 2v2 combinations found with current ELO ratings.")
     else:
         st.info("Need at least 4 players with matches to suggest 2v2 matchups.")
-
+ 
 # =========================
 # TAB 7 — 1v1 WIN PROBABILITY
 # =========================
 with tab7:
     st.subheader("🎯 1v1 Win Probability")
-    st.caption("Based on 1v1 ELO (or overall ELO if no 1v1 games yet)")
-
+ 
     if not current_df.empty:
         players_sorted = sorted(current_df["speler"].tolist())
-
+ 
         col1, col2 = st.columns(2)
         a = col1.selectbox("Player A", players_sorted, key="wp1_a")
         b = col2.selectbox("Player B", players_sorted, key="wp1_b")
-
-        elo_a = get_elo(a, "1v1")
-        elo_b = get_elo(b, "1v1")
-        prob  = expected(elo_a, elo_b)
-
-        col1.metric(f"🏓 {a}", f"{prob*100:.1f}%",
-                    delta=f"ELO {int(elo_a)}", delta_color="off")
-        col2.metric(f"🏓 {b}", f"{(1-prob)*100:.1f}%",
-                    delta=f"ELO {int(elo_b)}", delta_color="off")
-
-        if a != b:
-            st.divider()
-            st.markdown("#### 💡 What happens to ELO after a match?")
-            score_options = ["11-0","11-1","11-2","11-3","11-4","11-5",
-                             "11-6","11-7","11-8","11-9","12-10","13-11","14-12","15-13"]
-
-            col1b, col2b = st.columns(2)
-            score_a_wins = col1b.selectbox(f"Score if **{a}** wins", score_options,
-                                           index=8, key="score_a")
-            score_b_wins = col2b.selectbox(f"Score if **{b}** wins", score_options,
-                                           index=8, key="score_b")
-
-            def parse_score(s):
-                parts = s.split("-")
-                return int(parts[0]), int(parts[1])
-
-            def calc_new_elos(winner_elo, loser_elo, w_pts, l_pts):
-                diff  = abs(w_pts - l_pts)
-                mult  = math.log(diff + 1)
-                delta = K * mult * (1 - expected(winner_elo, loser_elo))
-                return round(winner_elo + delta), round(loser_elo - delta)
-
-            w1, l1 = parse_score(score_a_wins)
-            w2, l2 = parse_score(score_b_wins)
-
-            new_a_if_a_wins, new_b_if_a_wins = calc_new_elos(elo_a, elo_b, w1, l1)
-            new_b_if_b_wins, new_a_if_b_wins = calc_new_elos(elo_b, elo_a, w2, l2)
-
-            col1b, col2b = st.columns(2)
-            with col1b:
-                st.markdown(f"**If {a} wins {score_a_wins}:**")
-                st.markdown(f"- {a}: {int(elo_a)} → **{new_a_if_a_wins}** (+{new_a_if_a_wins - int(elo_a)})")
-                st.markdown(f"- {b}: {int(elo_b)} → **{new_b_if_a_wins}** ({new_b_if_a_wins - int(elo_b)})")
-            with col2b:
-                st.markdown(f"**If {b} wins {score_b_wins}:**")
-                st.markdown(f"- {b}: {int(elo_b)} → **{new_b_if_b_wins}** (+{new_b_if_b_wins - int(elo_b)})")
-                st.markdown(f"- {a}: {int(elo_a)} → **{new_a_if_b_wins}** ({new_a_if_b_wins - int(elo_a)})")
-
-            st.caption("ELO change depends on score margin (bigger win = more ELO) and the gap between players "
-                       "(beating a stronger opponent = more ELO than beating a weaker one).")
+ 
+        prob = expected(get_elo(a), get_elo(b))
+ 
+        col1.metric(f"🏓 {a}", f"{prob*100:.1f}%")
+        col2.metric(f"🏓 {b}", f"{(1-prob)*100:.1f}%")
     else:
         st.info("No data yet.")
-
+ 
 # =========================
 # TAB 8 — 2v2 WIN PROBABILITY
 # =========================
 with tab8:
     st.subheader("🎯 2v2 Win Probability")
-    st.caption("Based on 2v2 ELO (or overall ELO if no 2v2 games yet)")
-
+ 
     if not current_df.empty:
         players_sorted = sorted(current_df["speler"].tolist())
-
+ 
         col1, col2 = st.columns(2)
         col1.markdown("**🟦 Team 1**")
         col2.markdown("**🟥 Team 2**")
-
+ 
         t1a = col1.selectbox("Team 1 — Player 1", players_sorted, key="2v2_t1a")
         t1b = col1.selectbox("Team 1 — Player 2", players_sorted, key="2v2_t1b")
         t2a = col2.selectbox("Team 2 — Player 1", players_sorted, key="2v2_t2a")
         t2b = col2.selectbox("Team 2 — Player 2", players_sorted, key="2v2_t2b")
-
-        e1   = (get_elo(t1a, "2v2") + get_elo(t1b, "2v2")) / 2
-        e2   = (get_elo(t2a, "2v2") + get_elo(t2b, "2v2")) / 2
+ 
+        e1   = (get_elo(t1a) + get_elo(t1b)) / 2
+        e2   = (get_elo(t2a) + get_elo(t2b)) / 2
         prob = expected(e1, e2)
-
-        col1.metric(f"🟦 {t1a} & {t1b}", f"{prob*100:.1f}%",
-                    delta=f"Avg ELO {int(e1)}", delta_color="off")
-        col2.metric(f"🟥 {t2a} & {t2b}", f"{(1-prob)*100:.1f}%",
-                    delta=f"Avg ELO {int(e2)}", delta_color="off")
-
-        players_ok = len({t1a, t1b, t2a, t2b}) == 4
-        if players_ok:
-            st.divider()
-            st.markdown("#### 💡 What happens to ELO after a match?")
-            score_options = ["11-0","11-1","11-2","11-3","11-4","11-5",
-                             "11-6","11-7","11-8","11-9","12-10","13-11","14-12","15-13"]
-
-            col1c, col2c = st.columns(2)
-            score_t1_wins = col1c.selectbox(f"Score if **{t1a} & {t1b}** win", score_options,
-                                            index=8, key="score_t1")
-            score_t2_wins = col2c.selectbox(f"Score if **{t2a} & {t2b}** win", score_options,
-                                            index=8, key="score_t2")
-
-            def calc_new_elos_team(we, le, w_pts, l_pts):
-                diff  = abs(w_pts - l_pts)
-                mult  = math.log(diff + 1)
-                delta = K * mult * (1 - expected(we, le))
-                return round(we + delta), round(le - delta)
-
-            def parse_score(s):
-                parts = s.split("-")
-                return int(parts[0]), int(parts[1])
-
-            w1, l1 = parse_score(score_t1_wins)
-            w2, l2 = parse_score(score_t2_wins)
-
-            new_e1_if_t1, new_e2_if_t1 = calc_new_elos_team(e1, e2, w1, l1)
-            new_e2_if_t2, new_e1_if_t2 = calc_new_elos_team(e2, e1, w2, l2)
-
-            col1c, col2c = st.columns(2)
-            with col1c:
-                st.markdown(f"**If {t1a} & {t1b} win {score_t1_wins}:**")
-                st.markdown(f"- Team 1 avg ELO: {int(e1)} → **{new_e1_if_t1}** (+{new_e1_if_t1-int(e1)})")
-                st.markdown(f"- Team 2 avg ELO: {int(e2)} → **{new_e2_if_t1}** ({new_e2_if_t1-int(e2)})")
-            with col2c:
-                st.markdown(f"**If {t2a} & {t2b} win {score_t2_wins}:**")
-                st.markdown(f"- Team 2 avg ELO: {int(e2)} → **{new_e2_if_t2}** (+{new_e2_if_t2-int(e2)})")
-                st.markdown(f"- Team 1 avg ELO: {int(e1)} → **{new_e1_if_t2}** ({new_e1_if_t2-int(e1)})")
-            st.caption("ELO is calculated per individual player. Team average is shown here for readability.")
+ 
+        col1.metric(f"🟦 {t1a} & {t1b}", f"{prob*100:.1f}%")
+        col2.metric(f"🟥 {t2a} & {t2b}", f"{(1-prob)*100:.1f}%")
     else:
         st.info("No data yet.")
-
-# =========================
-# TAB 9 — SETTINGS
-# =========================
-with tab_set:
-    st.subheader("⚙️ ELO Settings & Uitleg")
-
-    st.markdown("""
-    ### Hoe werkt het ELO-systeem?
-
-    Elke speler begint met een **startwaarde** (standaard 1000). Na elke wedstrijd wordt ELO herberekend.
-    De winnaar krijgt punten van de verliezer; hoeveel hangt af van drie dingen:
-
-    1. **Verwacht resultaat** — als jij veel sterker bent dan je tegenstander, verwacht het systeem dat je wint.
-       Een overwinning levert dan weinig ELO op; een verlies kost veel.
-    2. **Score-marge** — grotere winst (bijv. 11–2) geeft meer ELO dan een nipte zege (11–9).
-       Dit werkt via een logaritmische schaal zodat het effect afvlakt bij heel grote marges.
-    3. **K-factor** — bepaalt hoe snel ELO in het algemeen beweegt.
-
-    **Formule (versimpeld):**
-    ```
-    ELO-verandering = K × log(score_verschil + 1) × (uitkomst − verwacht_resultaat)
-    ```
-    """)
-
-    st.divider()
-    st.markdown("### 🔧 Parameters aanpassen")
-
-    col1, col2, col3 = st.columns(3)
-
-    new_k = col1.number_input(
-        "K-factor",
-        min_value=1.0, max_value=100.0, value=float(K), step=1.0,
-        help="Hoe groter K, hoe sneller ELO verandert per wedstrijd. "
-             "K=32 is de klassieke schaakwaarde. Gebruik lager (16) voor meer stabiliteit, "
-             "hoger (64) als je wil dat ranglijsten snel verschuiven."
-    )
-    new_start = col2.number_input(
-        "Start ELO",
-        min_value=100.0, max_value=2000.0, value=float(START_ELO), step=100.0,
-        help="ELO-waarde waarmee nieuwe spelers beginnen. "
-             "Verandering hiervan heeft pas effect als je alle data opnieuw berekent — "
-             "bestaande spelers houden hun huidige ELO."
-    )
-    new_scale = col3.number_input(
-        "Schaalfactor",
-        min_value=100.0, max_value=1000.0, value=float(SCALE), step=50.0,
-        help="Bepaalt hoe sterk het ELO-verschil de kansberekening beïnvloedt. "
-             "Standaard is 400 (zoals FIDE schaak). Lagere waarde = grotere kansverschillen "
-             "bij hetzelfde ELO-verschil."
-    )
-
-    if st.button("💾 Instellingen opslaan"):
-        save_settings(new_k, new_start, new_scale)
-        st.success("✅ Instellingen opgeslagen! Ververs de pagina om de nieuwe berekening te zien.")
-        st.cache_data.clear()
-
-    st.divider()
-    st.markdown("### 📊 Simuleer ELO-verandering")
-    st.caption("Voer twee ELO-waarden in om te zien hoeveel punten er bij een bepaalde score wisselen.")
-
-    sc1, sc2, sc3 = st.columns(3)
-    sim_elo_a = sc1.number_input("ELO speler A", value=1000, step=10, key="sim_a")
-    sim_elo_b = sc2.number_input("ELO speler B", value=1000, step=10, key="sim_b")
-    sim_score = sc3.selectbox("Score (A wint)", ["11-0","11-1","11-2","11-3","11-4","11-5",
-                                                  "11-6","11-7","11-8","11-9","12-10","13-11"], key="sim_score")
-
-    sim_w, sim_l = int(sim_score.split("-")[0]), int(sim_score.split("-")[1])
-    sim_diff  = abs(sim_w - sim_l)
-    sim_mult  = math.log(sim_diff + 1)
-    sim_exp   = expected(sim_elo_a, sim_elo_b)
-    sim_delta = K * sim_mult * (1 - sim_exp)
-
-    st.markdown(f"""
-    | | Waarde |
-    |---|---|
-    | Verwachte winkans A | **{sim_exp*100:.1f}%** |
-    | Score-multiplier (log) | **{sim_mult:.2f}** |
-    | ELO-verandering | **+{sim_delta:.1f}** voor A / **−{sim_delta:.1f}** voor B |
-    | Nieuwe ELO A | **{sim_elo_a + sim_delta:.0f}** |
-    | Nieuwe ELO B | **{sim_elo_b - sim_delta:.0f}** |
-    """)
-
-    st.divider()
-    st.markdown("### 📘 Migratie: Group-kolom toevoegen aan USERS sheet")
-    st.info("""
-    **Hoe voeg je de 'group' kolom toe aan je Google Sheet?**
-
-    1. Open je Google Sheet → tabblad **USERS**
-    2. Voeg een nieuwe kolom toe met de naam **group**
-    3. Vul voor elke bestaande speler een groepsnaam in (bijv. `karma`)
-    4. Alle spelers die dezelfde waarde hebben in de `group`-kolom zien elkaars data
-    5. Nieuwe spelers die je later toevoegt via het admin-tabblad krijgen automatisch een group mee
-
-    Spelers met een andere group (of een lege group) zien elkaars matches/ELO **niet**.
-    Je kunt dus meerdere groepen in dezelfde app draaien zonder dat ze elkaars data zien.
-    """)
-
+ 
 # =========================
 # ADMIN TAB — MANAGE PLAYERS (Arthur only)
 # =========================
 if is_arthur and tab_admin is not None:
     with tab_admin:
-        st.subheader("🔧 Player Management")
+        st.subheader("⚙️ Player Management")
         st.info("Only visible to Arthur.")
-
+ 
         def load_users_ws():
-            ws       = spreadsheet.worksheet("USERS")
-            u_df     = pd.DataFrame(ws.get_all_records())
-            u_df["name"]  = u_df["name"].astype(str).str.strip()
-            u_df["pin"]   = u_df["pin"].astype(str).str.strip()
-            if "group" not in u_df.columns:
-                u_df["group"] = "default"
-            u_df["group"] = u_df["group"].astype(str).str.strip()
-            return u_df, ws
-
+            ws       = sheet.spreadsheet.worksheet("USERS")
+            users_df = pd.DataFrame(ws.get_all_records())
+            users_df["name"] = users_df["name"].astype(str).str.strip()
+            users_df["pin"]  = users_df["pin"].astype(str).str.strip()
+            return users_df, ws
+ 
         admin_users_df, users_ws = load_users_ws()
-
+ 
         st.write("**Current players:**")
-        st.dataframe(admin_users_df[["name","pin","group"]], use_container_width=True, hide_index=True)
-
+        st.dataframe(admin_users_df[["name", "pin"]], use_container_width=True, hide_index=True) 
+     
         st.divider()
         st.subheader("➕ Add New Player")
-        new_name  = st.text_input("Player Name", key="admin_new_name")
-        new_pin   = st.text_input("PIN",          key="admin_new_pin",   type="password")
-        new_group = st.text_input("Group",        key="admin_new_group", value=current_group)
-
+        new_name = st.text_input("Player Name",  key="admin_new_name")
+        new_pin  = st.text_input("PIN",          key="admin_new_pin", type="password")
+ 
         if st.button("Add Player ✅"):
             if not new_name.strip() or not new_pin.strip():
                 st.error("Name and PIN are required.")
             elif new_name.strip() in admin_users_df["name"].tolist():
                 st.error(f"Player '{new_name}' already exists.")
             else:
-                new_row        = pd.DataFrame([{"name": new_name.strip(),
-                                                "pin":  new_pin.strip(),
-                                                "group": new_group.strip() or current_group}])
+                new_row        = pd.DataFrame([{"name": new_name.strip(), "pin": new_pin.strip()}])
                 admin_users_df = pd.concat([admin_users_df, new_row], ignore_index=True)
                 users_ws.clear()
                 users_ws.update([admin_users_df.columns.tolist()] +
                                 admin_users_df.astype(str).values.tolist())
                 st.success(f"Player **{new_name}** added!")
                 st.rerun()
-
+ 
         st.divider()
         st.subheader("🗑️ Remove Player")
         del_player = st.selectbox("Select player to remove",
                                   admin_users_df["name"].tolist(), key="admin_del")
-        confirm_remove = st.checkbox(f"I confirm I want to permanently remove **{del_player}**",
-                                     key="confirm_remove_player")
+        
+        confirm_remove_player = st.checkbox(
+            f"I confirm I want to permanently remove **{del_player}**",
+            key="confirm_remove_player"
+        )
+        
         if st.button("Remove Player ❌"):
-            if confirm_remove:
+            if confirm_remove_player:
                 admin_users_df = admin_users_df[admin_users_df["name"] != del_player]
                 users_ws.clear()
                 users_ws.update([admin_users_df.columns.tolist()] +
