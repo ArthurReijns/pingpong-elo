@@ -346,6 +346,7 @@ def compute_elo(df):
             })
 
     hist_df = pd.DataFrame(history)
+    hist_df["datum"] = pd.to_datetime(hist_df["datum"])
     form_df = pd.DataFrame(form_log, columns=["speler", "result", "match_type"])
 
     current = []
@@ -810,8 +811,9 @@ with tab2:
         if p_hist.empty:
             continue
     
-        before_month = p_hist[p_hist["datum"] < start_month]
-    
+        p_hist["datum"] = pd.to_datetime(p_hist["datum"], errors="coerce")        
+        before_month = p_hist[p_hist["datum"] < pd.Timestamp(start_month)]    
+        
         if not before_month.empty:
             start_elo = before_month.iloc[-1]["elo"]
         else:
