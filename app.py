@@ -657,12 +657,25 @@ with tab2:
                 .rename(columns=LEADERBOARD_COL_RENAME)
             )
         elif view == "1v1":
-            lb_1 = lb[lb["matches_1v1"] > 0].sort_values("elo_1v1", ascending=False)
-            lb_1 = lb_1.rename(columns={"elo_1v1_disp": "ELO (1v1)"})
+            lb_1 = lb.copy()
+        
+            # Ensure columns exist BEFORE selecting
+            lb_1["elo_1v1_disp"] = lb_1["elo_1v1"].apply(
+                lambda x: int(round(x)) if pd.notna(x) else None
+            )
+            lb_1["win%_1v1"] = lb_1["winrate_1v1"].apply(
+                lambda x: f"{x*100:.1f}%" if pd.notna(x) else "–"
+            )
+        
+            lb_1 = lb_1[lb_1["matches_1v1"] > 0].sort_values("elo_1v1", ascending=False)
+        
             lb_display = lb_1[["speler","elo_1v1_disp","matches_1v1","wins_1v1","win%_1v1","streak"]].rename(columns={
-                "speler": "Player", "elo_1v1_disp": "ELO (1v1)",
-                "matches_1v1": "Matches", "wins_1v1": "Wins",
-                "win%_1v1": "Win %", "streak": "Streak 🔥"
+                "speler": "Player",
+                "elo_1v1_disp": "ELO (1v1)",
+                "matches_1v1": "Matches",
+                "wins_1v1": "Wins",
+                "win%_1v1": "Win %",
+                "streak": "Streak 🔥"
             })
         else:
             lb_2 = lb[lb["matches_2v2"] > 0].sort_values("elo_2v2", ascending=False)
