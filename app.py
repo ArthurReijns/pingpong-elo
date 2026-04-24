@@ -1556,97 +1556,97 @@ with tab_info:
     st.markdown("### 🧠 How the ELO system works")
 
     st.markdown("""
-Your system has **three different ratings per player**:
-
----
-
-## 🟦 1v1 ELO (Solo skill)
-- Only updated after **1v1 matches**
-- Uses pure head-to-head skill comparison
-- This is the most “accurate skill” rating
-
----
-
-## 🟩 2v2 ELO (Team skill)
-- Only updated after **2v2 matches**
-- Uses **average team strength vs opponent team**
-- Reflects coordination + team performance
-
----
-
-## ⚪ Overall ELO (combined strength)
-- Updated after **EVERY match (1v1 + 2v2)**
-- NOT used as input for match calculations
-- Only an **output / summary metric**
-- Represents overall competitiveness across all formats
-
----
-
-# ⚙️ How a match update works
-
-## 🏓 1v1 match
-When a 1v1 match is played:
-
-1. The system uses **1v1 ELO only**
-2. Expected probability is computed:
-   - stronger player → higher expected win chance
-3. ELO changes are computed using:
-
-K × log(score margin + 1) × (result − expected)
-
-4. Updates happen:
-- 🟦 1v1 ELO → full update
-- ⚪ Overall ELO → updated with **weight W_1V1**
-
----
-
-## 🏓 2v2 match
-
-When a 2v2 match is played:
-
-1. The system uses **2v2 ELO only**
-2. Team ELO = average of both players
-3. Expected probability computed on team averages
-4. Updates happen:
-- 🟩 2v2 ELO → full update
-- ⚪ Overall ELO → updated with **lower weight W_2V2**
-
----
-
-# ⚖️ Overall ELO (IMPORTANT)
-
-- Overall ELO is **NOT used to compute match results**
-- It is ONLY updated AFTER matches
-- It is a **weighted blend of performance across formats**
-
-So:
-
-> 🧠 Matches → update 1v1 or 2v2 ratings  
-> 🧠 Matches → also update overall ELO  
-> ❌ Overall ELO is never used as input for future matches
-
----
-
-# 📊 Intuition
-
-| System | Purpose |
-|--------|--------|
-| 1v1 ELO | pure skill |
-| 2v2 ELO | team ability |
-| Overall ELO | combined performance summary |
-
----
-
-# 📌 Why weights matter
-
-- 1v1 matches usually reflect skill more → higher weight
-- 2v2 matches are more noisy → lower weight
-
-So overall ELO changes:
-
-> more after 1v1 matches  
-> less after 2v2 matches
-""")
+        Your system has **three different ratings per player**:
+        
+        ---
+        
+        ## 🟦 1v1 ELO (Solo skill)
+        - Only updated after **1v1 matches**
+        - Uses pure head-to-head skill comparison
+        - This is the most “accurate skill” rating
+        
+        ---
+        
+        ## 🟩 2v2 ELO (Team skill)
+        - Only updated after **2v2 matches**
+        - Uses **average team strength vs opponent team**
+        - Reflects coordination + team performance
+        
+        ---
+        
+        ## ⚪ Overall ELO (combined strength)
+        - Updated after **EVERY match (1v1 + 2v2)**
+        - NOT used as input for match calculations
+        - Only an **output / summary metric**
+        - Represents overall competitiveness across all formats
+        
+        ---
+        
+        # ⚙️ How a match update works
+        
+        ## 🏓 1v1 match
+        When a 1v1 match is played:
+        
+        1. The system uses **1v1 ELO only**
+        2. Expected probability is computed:
+           - stronger player → higher expected win chance
+        3. ELO changes are computed using:
+        
+        K × log(score margin + 1) × (result − expected)
+        
+        4. Updates happen:
+        - 🟦 1v1 ELO → full update
+        - ⚪ Overall ELO → updated with **weight W_1V1**
+        
+        ---
+        
+        ## 🏓 2v2 match
+        
+        When a 2v2 match is played:
+        
+        1. The system uses **2v2 ELO only**
+        2. Team ELO = average of both players
+        3. Expected probability computed on team averages
+        4. Updates happen:
+        - 🟩 2v2 ELO → full update
+        - ⚪ Overall ELO → updated with **lower weight W_2V2**
+        
+        ---
+        
+        # ⚖️ Overall ELO (IMPORTANT)
+        
+        - Overall ELO is **NOT used to compute match results**
+        - It is ONLY updated AFTER matches
+        - It is a **weighted blend of performance across formats**
+        
+        So:
+        
+        > 🧠 Matches → update 1v1 or 2v2 ratings  
+        > 🧠 Matches → also update overall ELO  
+        > ❌ Overall ELO is never used as input for future matches
+        
+        ---
+        
+        # 📊 Intuition
+        
+        | System | Purpose |
+        |--------|--------|
+        | 1v1 ELO | pure skill |
+        | 2v2 ELO | team ability |
+        | Overall ELO | combined performance summary |
+        
+        ---
+        
+        # 📌 Why weights matter
+        
+        - 1v1 matches usually reflect skill more → higher weight
+        - 2v2 matches are more noisy → lower weight
+        
+        So overall ELO changes:
+        
+        > more after 1v1 matches  
+        > less after 2v2 matches
+        """)
 
  st.divider()
 
