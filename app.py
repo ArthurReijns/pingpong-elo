@@ -174,18 +174,16 @@ if "group" not in st.session_state:
 
 current_group = st.session_state.group
 
-# Welcome banner
-st.markdown(f"👋 **Welcome, {st.session_state.user}!**")
+col1, col2 = st.columns([8, 1])
 
-import time
+with col1:
+    st.markdown(f"👋 **Welcome, {st.session_state.user}!**")
 
-if st.button("🔄 Refresh"):
-    st.session_state["last_refresh"] = time.time()
-    st.cache_data.clear()
-    st.rerun()
-
-if "last_refresh" in st.session_state:
-    st.caption(f"Last refresh: {time.strftime('%H:%M:%S', time.localtime(st.session_state['last_refresh']))}")
+with col2:
+    if st.button("🔄"):
+        st.session_state["last_refresh"] = time.time()
+        st.cache_data.clear()
+        st.rerun()
 
 # =========================
 # HELPERS
