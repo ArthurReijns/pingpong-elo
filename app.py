@@ -743,6 +743,139 @@ with tab2:
     else:
         st.info("No data yet.")
 
+    st.divider()
+    st.subheader("📅 Monthly Ranking")
+    
+    import calendar
+    import datetime as dt
+    
+    # -------------------------
+    # CURRENT MONTH INFO
+    # -------------------------
+    today = dt.date.today()
+    year, month = today.year, today.month
+    
+    month_name = calendar.month_name[month]
+    days_in_month = calendar.monthrange(year, month)[1]
+    days_left = days_in_month - today.day
+    
+    st.caption(f"{month_name} {year} — {days_left} days remaining")
+    
+    
+    # -------------------------
+    # FILTER HISTORIC DATA
+    # -------------------------
+    hist = hist_df.copy()
+    hist["datum"] = pd.to_datetime(hist["datum"])
+    
+    start_month = pd.Timestamp(year=year, month=month, day=1)
+    end_month   = pd.Timestamp(today)
+    
+    # match view filter
+    if view == "1v1":
+        hist = hist[hist["match_type"] == "1v1"]
+    elif view == "2v2":
+        hist = hist[hist["match_type"] == "2v2"]
+    else:
+        hist = hist[hist["match_type"] == "Overall"]
+    
+    
+    # -------------------------
+    # PLAYERS LIST
+    # -------------------------
+    players = sorted(hist["speler"].unique().tolist())
+    
+    rows = []
+    
+    
+    # -------------------------
+    # COMPUTE MONTHLY STATS
+    # -------------------------
+    for p in players:
+        p_hist = hist[hist["speler"] == p].sort_values("wedstrijdId")
+    
+        if p_hist.empty:
+            continue
+    
+        # ---- START ELO (exact: last known before month) ----
+        before_month = p_hist[p_hist["datum"] < start_month]
+    
+        if not before_month.empty:
+            start_elo = before_month.iloc[-1]["elo"]
+        else:
+            start_elo = START_ELO
+    
+        # ---- CURRENT ELO ----
+        current_elo = p_hist.iloc[-1]["elo"]
+    
+        # ---- FILTER MONTH MATCHES ----
+        month_hist = p_hist[
+            (p_hist["datum"] >= start_month) &
+            (p_hist["datum"] <= end_month)
+        ]
+    
+        if month_hist.empty:
+            continue
+    
+        # ---- MATCHES PLAYED ----
+        match_ids = month_hist["wedstrijdId"].unique()
+        matches_played = len(match_ids)
+    
+        # ---- WINS CALCULATION ----
+        wins = 0
+    
+        for mid in match_ids:
+            match_rows = df[df["wedstrijdId"] == mid]
+    
+            if match_rows.empty:
+                continue
+    
+            r = match_rows.iloc[0]
+    
+            t1 = get_players(r, "Team1")
+            t2 = get_players(r, "Team2")
+    
+            try:
+                s1, s2 = int(r["team1_punten"]), int(r["team2_punten"])
+            except:
+                continue
+    
+            if p in t1 and s1 > s2:
+                wins += 1
+            elif p in t2 and s2 > s1:
+                wins += 1
+    
+        # ---- STATS ----
+        elo_change = current_elo - start_elo
+        pct_change = (elo_change / start_elo) * 100 if start_elo else 0
+    
+        rows.append({
+            "Player": p,
+            "Start ELO": round(start_elo),
+            "Current ELO": round(current_elo),
+            "Δ ELO": round(elo_change),
+            "% Change": round(pct_change, 1),
+            "Matches": matches_played,
+            "Wins": wins
+        })
+    
+    
+    # -------------------------
+    # OUTPUT TABLE
+    # -------------------------
+    monthly_df = pd.DataFrame(rows)
+    
+    if not monthly_df.empty:
+        monthly_df = monthly_df.sort_values("Δ ELO", ascending=False)
+    
+        st.dataframe(
+            monthly_df,
+            hide_index=True,
+            use_container_width=True
+        )
+    else:
+        st.info("No matches this month yet.")
+
 # =========================
 # TAB 3 — STATS
 # =========================
