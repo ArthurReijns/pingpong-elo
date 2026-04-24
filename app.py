@@ -734,7 +734,40 @@ with tab2:
                 "win%_2v2": "Win %", "streak_2v2": "Streak 🔥"
             })
 
-        st.dataframe(lb_display, hide_index=True, use_container_width=True)
+        # =========================
+        # STYLE LEADERBOARD
+        # =========================
+        
+        def style_leaderboard(df):
+            df = df.copy()
+        
+            def row_color(row):
+                idx = row.name
+        
+                # top 3 (gold, silver, bronze)
+                if idx == 0:
+                    return ['background-color: #FFD700'] * len(row)   # gold
+                elif idx == 1:
+                    return ['background-color: #C0C0C0'] * len(row)   # silver
+                elif idx == 2:
+                    return ['background-color: #CD7F32'] * len(row)   # bronze
+        
+                # last 3 rows (red-ish)
+                elif idx >= len(df) - 3:
+                    return ['background-color: #ffcccc'] * len(row)
+        
+                return [''] * len(row)
+        
+            return df.style.apply(row_color, axis=1)
+        
+        
+        styled = style_leaderboard(lb_display)
+        
+        st.dataframe(
+            styled,
+            hide_index=True,
+            use_container_width=True
+        )
     else:
         st.info("No data yet.")
 
