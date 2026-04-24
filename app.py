@@ -1274,7 +1274,7 @@ with tab_set_admin:
         st.error("You are not allowed to edit settings.")
         st.stop()
 
-    st.markdown("### 🔧 Parameters aanpassen")
+    st.markdown("### 🔧 Adjust parameters")
 
     col1, col2, col3 = st.columns(3)
 
@@ -1284,19 +1284,20 @@ with tab_set_admin:
     )
 
     new_start = col2.number_input(
-        "Start ELO",
+        "Starting ELO",
         min_value=100.0, max_value=2000.0, value=float(START_ELO), step=100.0
     )
 
     new_scale = col3.number_input(
-        "Schaalfactor",
+        "Scaling factor",
         min_value=100.0, max_value=1000.0, value=float(SCALE), step=50.0
     )
 
-    if st.button("💾 Instellingen opslaan"):
+    if st.button("💾 Save settings"):
         save_settings(new_k, new_start, new_scale)
         st.success("Saved!")
         st.cache_data.clear()
+
 
 # =========================
 # TAB 10 — INFO
@@ -1306,38 +1307,42 @@ with tab_info:
 
     st.markdown("### 📌 Current Parameters")
     st.write(f"**K-factor:** {K}")
-    st.write(f"**Start ELO:** {START_ELO}")
+    st.write(f"**Starting ELO:** {START_ELO}")
     st.write(f"**Scale:** {SCALE}")
-    
-    st.subheader("⚙️ ELO Settings & Uitleg")
+
+    st.subheader("⚙️ ELO Settings & Explanation")
 
     st.markdown("""
-    ### Hoe werkt het ELO-systeem?
+    ### How does the ELO system work?
 
-    Elke speler begint met een **startwaarde** (standaard 1000). Na elke wedstrijd wordt ELO herberekend.
-    De winnaar krijgt punten van de verliezer; hoeveel hangt af van drie dingen:
+    Every player starts with a **starting value** (default 1000). After each match, ELO is recalculated.
+    The winner gains points from the loser; the amount depends on three things:
 
-    1. **Verwacht resultaat** — als jij veel sterker bent dan je tegenstander, verwacht het systeem dat je wint.
-       Een overwinning levert dan weinig ELO op; een verlies kost veel.
-    2. **Score-marge** — grotere winst (bijv. 11–2) geeft meer ELO dan een nipte zege (11–9).
-       Dit werkt via een logaritmische schaal zodat het effect afvlakt bij heel grote marges.
-    3. **K-factor** — bepaalt hoe snel ELO in het algemeen beweegt.
+    1. **Expected result** — if you are much stronger than your opponent, the system expects you to win.
+       A win then gives fewer ELO points; a loss costs more.
+    2. **Score margin** — larger wins (e.g. 11–2) give more ELO than narrow wins (11–9).
+       This uses a logarithmic scale so the effect flattens for very large margins.
+    3. **K-factor** — determines how fast ELO changes overall.
 
-    **Formule (versimpeld):**
+    **Formula (simplified):**
     ```
-    ELO-verandering = K × log(score_verschil + 1) × (uitkomst − verwacht_resultaat)
+    ELO change = K × log(score difference + 1) × (result − expected result)
     ```
     """)
 
     st.divider()
-    st.markdown("### 📊 Simuleer ELO-verandering")
-    st.caption("Voer twee ELO-waarden in om te zien hoeveel punten er bij een bepaalde score wisselen.")
+    st.markdown("### 📊 Simulate ELO change")
+    st.caption("Enter two ELO values to see how many points change for a given score.")
 
     sc1, sc2, sc3 = st.columns(3)
-    sim_elo_a = sc1.number_input("ELO speler A", value=1000, step=10, key="sim_a")
-    sim_elo_b = sc2.number_input("ELO speler B", value=1000, step=10, key="sim_b")
-    sim_score = sc3.selectbox("Score (A wint)", ["11-0","11-1","11-2","11-3","11-4","11-5",
-                                                  "11-6","11-7","11-8","11-9","12-10","13-11"], key="sim_score")
+    sim_elo_a = sc1.number_input("Player A ELO", value=1000, step=10, key="sim_a")
+    sim_elo_b = sc2.number_input("Player B ELO", value=1000, step=10, key="sim_b")
+    sim_score = sc3.selectbox(
+        "Score (A wins)",
+        ["11-0","11-1","11-2","11-3","11-4","11-5",
+         "11-6","11-7","11-8","11-9","12-10","13-11"],
+        key="sim_score"
+    )
 
     sim_w, sim_l = int(sim_score.split("-")[0]), int(sim_score.split("-")[1])
     sim_diff  = abs(sim_w - sim_l)
@@ -1346,13 +1351,13 @@ with tab_info:
     sim_delta = K * sim_mult * (1 - sim_exp)
 
     st.markdown(f"""
-    | | Waarde |
+    | | Value |
     |---|---|
-    | Verwachte winkans A | **{sim_exp*100:.1f}%** |
-    | Score-multiplier (log) | **{sim_mult:.2f}** |
-    | ELO-verandering | **+{sim_delta:.1f}** voor A / **−{sim_delta:.1f}** voor B |
-    | Nieuwe ELO A | **{sim_elo_a + sim_delta:.0f}** |
-    | Nieuwe ELO B | **{sim_elo_b - sim_delta:.0f}** |
+    | Expected win chance A | **{sim_exp*100:.1f}%** |
+    | Score multiplier (log) | **{sim_mult:.2f}** |
+    | ELO change | **+{sim_delta:.1f}** for A / **−{sim_delta:.1f}** for B |
+    | New ELO A | **{sim_elo_a + sim_delta:.0f}** |
+    | New ELO B | **{sim_elo_b - sim_delta:.0f}** |
     """)
 
 # =========================
