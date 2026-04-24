@@ -470,12 +470,18 @@ df       = filter_by_group(df_all, users_df, current_group)
 
 current_df, hist_df, form_df = compute_elo(df)
 
-streaks          = compute_streaks(form_df)
+streaks_all  = compute_streaks(form_df)
+
+streaks_1v1  = compute_streaks(form_df[form_df["match_type"] == "1v1"]) if "match_type" in form_df.columns else {}
+streaks_2v2  = compute_streaks(form_df[form_df["match_type"] == "2v2"]) if "match_type" in form_df.columns else {}
+
 highest_elo_dict = compute_highest_elo(hist_df)
 biggest_win_dict = compute_biggest_win(df)
 
 if not current_df.empty:
-    current_df["streak"]      = current_df["speler"].map(lambda p: streaks.get(p, 0))
+    current_df["streak"] = current_df["speler"].map(lambda p: streaks_all.get(p, 0))
+    current_df["streak_1v1"] = current_df["speler"].map(lambda p: streaks_1v1.get(p, 0))
+    current_df["streak_2v2"] = current_df["speler"].map(lambda p: streaks_2v2.get(p, 0))
     current_df["highest_elo"] = current_df["speler"].map(
         lambda p: highest_elo_dict.get(p,
             float(current_df.loc[current_df["speler"] == p, "elo"].iloc[0])
@@ -712,20 +718,20 @@ with tab2:
         
             lb_1 = lb_1[lb_1["matches_1v1"] > 0].sort_values("elo_1v1", ascending=False)
         
-            lb_display = lb_1[["speler","elo_1v1_disp","matches_1v1","wins_1v1","win%_1v1","streak"]].rename(columns={
+            lb_display = lb_1[["speler","elo_1v1_disp","matches_1v1","wins_1v1","win%_1v1","streak_1v1"]].rename(columns={
                 "speler": "Player",
                 "elo_1v1_disp": "ELO (1v1)",
                 "matches_1v1": "Matches",
                 "wins_1v1": "Wins",
                 "win%_1v1": "Win %",
-                "streak": "Streak 🔥"
+                "streak_1v1": "Streak 🔥"
             })
         else:
             lb_2 = lb[lb["matches_2v2"] > 0].sort_values("elo_2v2", ascending=False)
-            lb_display = lb_2[["speler","elo_2v2_disp","matches_2v2","wins_2v2","win%_2v2","streak"]].rename(columns={
+            lb_display = lb_2[["speler","elo_2v2_disp","matches_2v2","wins_2v2","win%_2v2","streak_2v2"]].rename(columns={
                 "speler": "Player", "elo_2v2_disp": "ELO (2v2)",
                 "matches_2v2": "Matches", "wins_2v2": "Wins",
-                "win%_2v2": "Win %", "streak": "Streak 🔥"
+                "win%_2v2": "Win %", "streak_2v2": "Streak 🔥"
             })
 
         st.dataframe(lb_display, hide_index=True, use_container_width=True)
