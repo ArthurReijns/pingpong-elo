@@ -746,6 +746,13 @@ with tab2:
 
     st.divider()
     st.subheader("📅 Monthly Ranking")
+
+    if view == "Overall":
+        elo_col = "elo"
+    elif view == "1v1":
+        elo_col = "elo_1v1"
+    else:
+        elo_col = "elo_2v2"
     
     import calendar
     import datetime as dt
@@ -815,11 +822,11 @@ with tab2:
         before_month = p_hist[p_hist["datum"] < pd.Timestamp(start_month)]    
         
         if not before_month.empty:
-            start_elo = before_month.iloc[-1]["elo"]
+            start_elo = before_month.iloc[-1][elo_col]
         else:
             start_elo = START_ELO
     
-        current_elo = p_hist.iloc[-1]["elo"]
+        current_elo = p_hist.iloc[-1][elo_col]
     
         # -------------------------
         # MATCH STATS
