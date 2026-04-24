@@ -1301,8 +1301,7 @@ with tab_set_admin:
 # =========================
 # TAB 10 — INFO
 # =========================
-with tab_set:
-
+with tab_info:
     st.subheader("ℹ️ System Info & ELO Simulation")
 
     st.markdown("### 📌 Current Parameters")
