@@ -1539,7 +1539,7 @@ with tab_set_admin:
 
     new_score_factor = col4.number_input(
         "Score difference factor",
-        min_value=0, max_value=1.0, value=float(SCORE_FACTOR), step=0.05
+        min_value=0.0, max_value=1.0, value=float(SCORE_FACTOR), step=0.05
     )
 
     st.markdown("### ⚖️ Match type influence on OVERALL ELO")
