@@ -1597,15 +1597,15 @@ with tab_info:
     # =========================
     st.markdown("### ⚙️ Current System Settings")
     st.write("### ⚖️ ELO computation parameters (used to compute 1v1 and 2v2 ELO impact)")
-    st.write(f"**K-factor:** {K}")
-    st.write(f"**Starting ELO:** {START_ELO}")
-    st.write(f"**Scale:** {SCALE}")
-    st.write(f"**Score difference factor:** {SCORE_FACTOR}")
+    st.write(f"**K-factor:** {get_settings()['K']}")
+    st.write(f"**Starting ELO:** {get_settings()['START_ELO']}")
+    st.write(f"**Scale:** {get_settings()['SCALE']}")
+    st.write(f"**Score difference factor:** {get_settings()['SCORE_FACTOR']}")
 
     # NEW: weights (from admin settings)
     st.write("### ⚖️ 1v1 vs 2v2 Match Weights (only used for Overall ELO impact)")
-    st.write(f"**1v1 weight → Overall ELO:** {W_1V1}")
-    st.write(f"**2v2 weight → Overall ELO:** {W_2V2}")
+    st.write(f"**1v1 weight → Overall ELO:** {get_settings()['W_1V1']}")
+    st.write(f"**2v2 weight → Overall ELO:** {get_settings()['W_2V2']}")
 
     st.divider()
 
