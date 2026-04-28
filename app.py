@@ -13,6 +13,7 @@ from itertools import combinations
 DEFAULT_K          = 32
 DEFAULT_START_ELO  = 1000
 DEFAULT_SCALE      = 400   # ELO scale factor (400 is standard)
+DEFAULT_SCORE_FACTOR = 0.25
 DEFAULT_WEIGHT_1v1 = 1.0
 DEFAULT_WEIGHT_2v2 = 0.5
 
@@ -51,6 +52,7 @@ def load_settings():
             "SCALE":     float(d.get("SCALE", DEFAULT_SCALE)),
             "W_1V1":     float(d.get("W_1V1", DEFAULT_WEIGHT_1v1)),
             "W_2V2":     float(d.get("W_2V2", DEFAULT_WEIGHT_2v2)),
+            "SCORE_FACTOR":     float(d.get("SCORE_FACTOR", DEFAULT_SCORE_FACTOR)),
         }
 
     except Exception:
@@ -60,9 +62,10 @@ def load_settings():
             "SCALE": DEFAULT_SCALE,
             "W_1V1": DEFAULT_WEIGHT_1v1,
             "W_2V2": DEFAULT_WEIGHT_2v2,
+            "SCORE_FACTOR": DEFAULT_SCORE_FACTOR,
         }
 
-def save_settings(k, start_elo, scale, w_1v1, w_2v2):
+def save_settings(k, start_elo, scale, w_1v1, w_2v2, score_factor):
     try:
         try:
             ws = spreadsheet.worksheet("SETTINGS")
@@ -78,6 +81,7 @@ def save_settings(k, start_elo, scale, w_1v1, w_2v2):
             ["SCALE",     str(scale),    "Scaling factor"],
             ["W_1V1",     str(w_1v1),    "Overall weight for 1v1 matches"],
             ["W_2V2",     str(w_2v2),    "Overall weight for 2v2 matches"],
+            ["SCORE_FACTOR",     str(score_factor),    "Score difference bonus factor"],
         ])
 
         st.cache_data.clear()
@@ -93,6 +97,7 @@ SCALE     = settings["SCALE"]
 
 W_1V1     = settings["W_1V1"]
 W_2V2     = settings["W_2V2"]
+SCORE_FACTOR  = settings["SCORE_FACTOR"]
 
 # =========================
 # COLUMN RENAME MAPS
@@ -325,7 +330,8 @@ def compute_elo(df):
             form_log.append((p, res2, mtype))
 
         diff = abs(s1 - s2)
-        mult = max(1.0, math.log(diff + 1))
+        # mult = max(1.0, math.log(diff + 1))
+        mult = 1.0 + SCORE_FACTOR * math.log(diff + 1))
 
         # =====================================================
         # 🟦 1V1 MATCH
@@ -1049,7 +1055,8 @@ with tab3:
                                        "score": f"{s1_r}–{s2_r}"})
                 res1_r  = 1 if t1_won else 0
                 diff_r  = abs(s1_r - s2_r)
-                mult_r  = math.log(diff_r + 1)
+                # mult_r  = math.log(diff_r + 1)
+                mult_r =  1.0 + SCORE_FACTOR * math.log(diff_r + 1))
                 d1_r    = K * mult_r * (res1_r - expected(e1_r, e2_r))
                 for p in t1_players:
                     elo_running[p] += d1_r
@@ -1370,7 +1377,8 @@ with tab7:
 
             def calc_new_elos(winner_elo, loser_elo, w_pts, l_pts):
                 diff  = abs(w_pts - l_pts)
-                mult  = math.log(diff + 1)
+                # mult  = math.log(diff + 1)
+                mult = 1.0 + SCORE_FACTOR * math.log(diff + 1))
                 delta = K * mult * (1 - expected(winner_elo, loser_elo))
                 return round(winner_elo + delta), round(loser_elo - delta)
 
@@ -1472,7 +1480,8 @@ with tab8:
 
             def calc_new_elos_team(we, le, w_pts, l_pts):
                 diff  = abs(w_pts - l_pts)
-                mult  = math.log(diff + 1)
+                # mult  = math.log(diff + 1)
+                mult = 1.0 + SCORE_FACTOR * math.log(diff + 1))
                 delta = K * mult * (1 - expected(we, le))
                 return round(we + delta), round(le - delta)
 
@@ -1511,7 +1520,7 @@ with tab_set_admin:
 
     st.markdown("### 🔧 Adjust parameters")
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     new_k = col1.number_input(
         "K-factor",
@@ -1528,24 +1537,29 @@ with tab_set_admin:
         min_value=100.0, max_value=1000.0, value=float(SCALE), step=50.0
     )
 
+    new_score_factor = col4.number_input(
+        "Score difference factor",
+        min_value=0, max_value=1.0, value=float(SCORE_FACTOR), step=0.05
+    )
+
     st.markdown("### ⚖️ Match type influence on OVERALL ELO")
 
-    col4, col5 = st.columns(2)
+    col5, col6 = st.columns(2)
 
-    new_w_1v1 = col4.slider(
+    new_w_1v1 = col5.slider(
         "1v1 weight (overall impact)",
         min_value=0.0, max_value=1.0,
         value=float(W_1V1), step=0.05
     )
 
-    new_w_2v2 = col5.slider(
+    new_w_2v2 = col6.slider(
         "2v2 weight (overall impact)",
         min_value=0.0, max_value=1.0,
         value=float(W_2V2), step=0.05
     )
 
     if st.button("💾 Save settings"):
-        save_settings(new_k, new_start, new_scale, new_w_1v1, new_w_2v2)
+        save_settings(new_k, new_start, new_scale, new_w_1v1, new_w_2v2, new_score_factor)
         st.success("Saved!")
         st.cache_data.clear()
         st.rerun()
@@ -1565,6 +1579,7 @@ with tab_info:
     st.write(f"**K-factor:** {K}")
     st.write(f"**Starting ELO:** {START_ELO}")
     st.write(f"**Scale:** {SCALE}")
+    st.write(f"**Score difference factor:** {SCORE_FACTOR}")
 
     # NEW: weights (from admin settings)
     st.write("### ⚖️ 1v1 vs 2v2 Match Weights (only used for Overall ELO impact)")
@@ -1615,7 +1630,7 @@ with tab_info:
        - stronger player → higher expected win chance
     3. ELO changes are computed using:
     
-    K × log(score margin + 1) × (result − expected)
+    K × (1 + SCORE_FACTOR * log(score margin + 1)) × (result − expected)
     
     4. Updates happen:
     - 🟦 1v1 ELO → full update
@@ -1692,7 +1707,8 @@ with tab_info:
 
     sim_w, sim_l = map(int, sim_score.split("-"))
     sim_diff  = abs(sim_w - sim_l)
-    sim_mult  = math.log(sim_diff + 1)
+    # sim_mult  = math.log(sim_diff + 1)
+    sim_mult = 1.0 + SCORE_FACTOR * math.log(sim_diff + 1))
     sim_exp   = expected(sim_elo_a, sim_elo_b)
     sim_delta = K * sim_mult * (1 - sim_exp)
 
