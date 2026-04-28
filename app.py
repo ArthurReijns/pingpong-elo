@@ -89,15 +89,8 @@ def save_settings(k, start_elo, scale, w_1v1, w_2v2, score_factor):
     except Exception as e:
         st.error(f"Kon instellingen niet opslaan: {e}")
 
-settings  = load_settings()
-
-K         = settings["K"]
-START_ELO = settings["START_ELO"]
-SCALE     = settings["SCALE"]
-
-W_1V1     = settings["W_1V1"]
-W_2V2     = settings["W_2V2"]
-SCORE_FACTOR  = settings["SCORE_FACTOR"]
+def get_settings():
+    return load_settings()
 
 # =========================
 # COLUMN RENAME MAPS
@@ -201,6 +194,8 @@ def get_players(row, prefix):
     return players
 
 def expected(a, b):
+    settings = get_settings()
+    SCALE = settings["SCALE"]
     return 1 / (1 + 10 ** ((b - a) / SCALE))
 
 def valid_score(s1, s2):
@@ -263,6 +258,16 @@ def filter_by_group(df, users_df, group):
 # ELO ENGINE (FINAL VERSION)
 # =========================
 def compute_elo(df):
+
+    settings = get_settings()
+
+    K = settings["K"]
+    START_ELO = settings["START_ELO"]
+    SCALE = settings["SCALE"]
+    
+    W_1V1 = settings["W_1V1"]
+    W_2V2 = settings["W_2V2"]
+    SCORE_FACTOR = settings["SCORE_FACTOR"]
 
     if df.empty:
         empty_cur = pd.DataFrame(columns=[
@@ -566,6 +571,8 @@ players_list = sorted(
 )
 
 def get_elo(player, mode="overall"):
+    settings = get_settings()
+    START_ELO = settings["START_ELO"]
     row = current_df[current_df["speler"] == player]
     if row.empty:
         return START_ELO
@@ -1376,6 +1383,10 @@ with tab7:
                 return int(parts[0]), int(parts[1])
 
             def calc_new_elos(winner_elo, loser_elo, w_pts, l_pts):
+                settings = get_settings()
+                K = settings["K"]
+                
+                SCORE_FACTOR = settings["SCORE_FACTOR"]
                 diff  = abs(w_pts - l_pts)
                 # mult  = math.log(diff + 1)
                 mult = 1.0 + SCORE_FACTOR * math.log(diff + 1)
@@ -1479,6 +1490,9 @@ with tab8:
                                             index=8, key="score_t2")
 
             def calc_new_elos_team(we, le, w_pts, l_pts):
+                settings = get_settings()
+                K = settings["K"]
+                SCORE_FACTOR = settings["SCORE_FACTOR"]
                 diff  = abs(w_pts - l_pts)
                 # mult  = math.log(diff + 1)
                 mult = 1.0 + SCORE_FACTOR * math.log(diff + 1)
