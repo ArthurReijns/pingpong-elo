@@ -372,7 +372,7 @@ def compute_elo(df):
             e2 = sum(elo_2v2[p] for p in t2) / len(t2)
 
             expected1 = 1 / (1 + 10 ** ((e2 - e1) / SCALE))
-            d = K *  * (res1 - expected1)
+            d = K * mult * (res1 - expected1)
 
             # update 2v2 + overall
             for p in t1:
