@@ -1545,22 +1545,22 @@ with tab_set_admin:
 
     new_k = col1.number_input(
         "K-factor",
-        min_value=1.0, max_value=100.0, value=float(K), step=1.0
+        min_value=1.0, max_value=100.0, value=float(get_settings()["K"]), step=1.0
     )
 
     new_start = col2.number_input(
         "Starting ELO",
-        min_value=100.0, max_value=2000.0, value=float(START_ELO), step=100.0
+        min_value=100.0, max_value=2000.0, value=float(get_settings()["START_ELO"]), step=100.0
     )
 
     new_scale = col3.number_input(
         "Scaling factor",
-        min_value=100.0, max_value=1000.0, value=float(SCALE), step=50.0
+        min_value=100.0, max_value=1000.0, value=float(get_settings()["SCALE"]), step=50.0
     )
 
     new_score_factor = col4.number_input(
         "Score difference factor",
-        min_value=0.0, max_value=1.0, value=float(SCORE_FACTOR), step=0.05
+        min_value=0.0, max_value=1.0, value=float(get_settings()["SCORE_FACTOR"]), step=0.05
     )
 
     st.markdown("### ⚖️ Match type influence on OVERALL ELO")
@@ -1570,13 +1570,13 @@ with tab_set_admin:
     new_w_1v1 = col5.slider(
         "1v1 weight (overall impact)",
         min_value=0.0, max_value=1.0,
-        value=float(W_1V1), step=0.05
+        value=float(get_settings()["W_1V1"]), step=0.05
     )
 
     new_w_2v2 = col6.slider(
         "2v2 weight (overall impact)",
         min_value=0.0, max_value=1.0,
-        value=float(W_2V2), step=0.05
+        value=float(get_settings()["W_2V2"]), step=0.05
     )
 
     if st.button("💾 Save settings"):
