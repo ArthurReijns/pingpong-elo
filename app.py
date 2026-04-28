@@ -1381,14 +1381,25 @@ with tab7:
             new_b_if_b_wins, new_a_if_b_wins = calc_new_elos(elo_b, elo_a, w2, l2)
 
             col1b, col2b = st.columns(2)
+
             with col1b:
                 st.markdown(f"**If {a} wins {score_a_wins}:**")
-                st.markdown(f"- {a}: {int(elo_a)} → **{new_a_if_a_wins}** (+{new_a_if_a_wins - int(elo_a)})")
-                st.markdown(f"- {b}: {int(elo_b)} → **{new_b_if_a_wins}** ({new_b_if_a_wins - int(elo_b)})")
+                st.markdown(f"- {a}: {round(elo_a)} → **{new_a_if_a_wins}** (+{new_a_if_a_wins - round(elo_a)})")
+                st.markdown(f"- {b}: {round(elo_b)} → **{new_b_if_a_wins}** ({new_b_if_a_wins - round(elo_b)})")
+            
             with col2b:
                 st.markdown(f"**If {b} wins {score_b_wins}:**")
-                st.markdown(f"- {b}: {int(elo_b)} → **{new_b_if_b_wins}** (+{new_b_if_b_wins - int(elo_b)})")
-                st.markdown(f"- {a}: {int(elo_a)} → **{new_a_if_b_wins}** ({new_a_if_b_wins - int(elo_a)})")
+                st.markdown(f"- {b}: {round(elo_b)} → **{new_b_if_b_wins}** (+{new_b_if_b_wins - round(elo_b)})")
+                st.markdown(f"- {a}: {round(elo_a)} → **{new_a_if_b_wins}** ({new_a_if_b_wins - round(elo_a)})")
+            
+            # with col1b:
+            #     st.markdown(f"**If {a} wins {score_a_wins}:**")
+            #     st.markdown(f"- {a}: {int(elo_a)} → **{new_a_if_a_wins}** (+{new_a_if_a_wins - int(elo_a)})")
+            #     st.markdown(f"- {b}: {int(elo_b)} → **{new_b_if_a_wins}** ({new_b_if_a_wins - int(elo_b)})")
+            # with col2b:
+            #     st.markdown(f"**If {b} wins {score_b_wins}:**")
+            #     st.markdown(f"- {b}: {int(elo_b)} → **{new_b_if_b_wins}** (+{new_b_if_b_wins - int(elo_b)})")
+            #     st.markdown(f"- {a}: {int(elo_a)} → **{new_a_if_b_wins}** ({new_a_if_b_wins - int(elo_a)})")
 
             st.caption("ELO change depends on score margin (bigger win = more ELO) and the gap between players "
                        "(beating a stronger opponent = more ELO than beating a weaker one).")
@@ -1442,9 +1453,9 @@ with tab8:
         prob = expected(e1, e2)
 
         col1.metric(f"🟦 {t1a} & {t1b}", f"{prob*100:.1f}%",
-                    delta=f"Avg ELO {int(e1)}", delta_color="off")
+                    delta=f"Avg ELO {round(e1)}", delta_color="off")
         col2.metric(f"🟥 {t2a} & {t2b}", f"{(1-prob)*100:.1f}%",
-                    delta=f"Avg ELO {int(e2)}", delta_color="off")
+                    delta=f"Avg ELO {round(e2)}", delta_color="off")
 
         players_ok = len({t1a, t1b, t2a, t2b}) == 4
         if players_ok:
@@ -1478,12 +1489,12 @@ with tab8:
             col1c, col2c = st.columns(2)
             with col1c:
                 st.markdown(f"**If {t1a} & {t1b} win {score_t1_wins}:**")
-                st.markdown(f"- Team 1 avg ELO: {int(e1)} → **{new_e1_if_t1}** (+{new_e1_if_t1-int(e1)})")
-                st.markdown(f"- Team 2 avg ELO: {int(e2)} → **{new_e2_if_t1}** ({new_e2_if_t1-int(e2)})")
+                st.markdown(f"- Team 1 avg ELO: {round(e1)} → **{new_e1_if_t1}** (+{new_e1_if_t1-round(e1)})")
+                st.markdown(f"- Team 2 avg ELO: {round(e2)} → **{new_e2_if_t1}** ({new_e2_if_t1-round(e2)})")
             with col2c:
                 st.markdown(f"**If {t2a} & {t2b} win {score_t2_wins}:**")
-                st.markdown(f"- Team 2 avg ELO: {int(e2)} → **{new_e2_if_t2}** (+{new_e2_if_t2-int(e2)})")
-                st.markdown(f"- Team 1 avg ELO: {int(e1)} → **{new_e1_if_t2}** ({new_e1_if_t2-int(e1)})")
+                st.markdown(f"- Team 2 avg ELO: {round(e2)} → **{new_e2_if_t2}** (+{new_e2_if_t2-round(e2)})")
+                st.markdown(f"- Team 1 avg ELO: {round(e1)} → **{new_e1_if_t2}** ({new_e1_if_t2-round(e1)})")
             st.caption("ELO is calculated per individual player. Team average is shown here for readability.")
     else:
         st.info("No data yet.")
