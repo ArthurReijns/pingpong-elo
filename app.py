@@ -331,7 +331,7 @@ def compute_elo(df):
 
         diff = abs(s1 - s2)
         # mult = max(1.0, math.log(diff + 1))
-        mult = 1.0 + SCORE_FACTOR * math.log(diff + 1))
+        mult = 1.0 + SCORE_FACTOR * math.log(diff + 1)
 
         # =====================================================
         # 🟦 1V1 MATCH
@@ -372,7 +372,7 @@ def compute_elo(df):
             e2 = sum(elo_2v2[p] for p in t2) / len(t2)
 
             expected1 = 1 / (1 + 10 ** ((e2 - e1) / SCALE))
-            d = K * mult * (res1 - expected1)
+            d = K *  * (res1 - expected1)
 
             # update 2v2 + overall
             for p in t1:
@@ -1056,7 +1056,7 @@ with tab3:
                 res1_r  = 1 if t1_won else 0
                 diff_r  = abs(s1_r - s2_r)
                 # mult_r  = math.log(diff_r + 1)
-                mult_r =  1.0 + SCORE_FACTOR * math.log(diff_r + 1))
+                mult_r =  1.0 + SCORE_FACTOR * math.log(diff_r + 1)
                 d1_r    = K * mult_r * (res1_r - expected(e1_r, e2_r))
                 for p in t1_players:
                     elo_running[p] += d1_r
@@ -1378,7 +1378,7 @@ with tab7:
             def calc_new_elos(winner_elo, loser_elo, w_pts, l_pts):
                 diff  = abs(w_pts - l_pts)
                 # mult  = math.log(diff + 1)
-                mult = 1.0 + SCORE_FACTOR * math.log(diff + 1))
+                mult = 1.0 + SCORE_FACTOR * math.log(diff + 1)
                 delta = K * mult * (1 - expected(winner_elo, loser_elo))
                 return round(winner_elo + delta), round(loser_elo - delta)
 
@@ -1481,7 +1481,7 @@ with tab8:
             def calc_new_elos_team(we, le, w_pts, l_pts):
                 diff  = abs(w_pts - l_pts)
                 # mult  = math.log(diff + 1)
-                mult = 1.0 + SCORE_FACTOR * math.log(diff + 1))
+                mult = 1.0 + SCORE_FACTOR * math.log(diff + 1)
                 delta = K * mult * (1 - expected(we, le))
                 return round(we + delta), round(le - delta)
 
@@ -1708,7 +1708,7 @@ with tab_info:
     sim_w, sim_l = map(int, sim_score.split("-"))
     sim_diff  = abs(sim_w - sim_l)
     # sim_mult  = math.log(sim_diff + 1)
-    sim_mult = 1.0 + SCORE_FACTOR * math.log(sim_diff + 1))
+    sim_mult = 1.0 + SCORE_FACTOR * math.log(sim_diff + 1)
     sim_exp   = expected(sim_elo_a, sim_elo_b)
     sim_delta = K * sim_mult * (1 - sim_exp)
 
