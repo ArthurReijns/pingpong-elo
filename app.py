@@ -914,6 +914,8 @@ with tab2:
         if not before_month.empty:
             start_elo = before_month.iloc[-1][elo_col]
         else:
+            settings = get_settings()
+            START_ELO = settings["START_ELO"]
             start_elo = START_ELO
     
         current_elo = p_hist.iloc[-1][elo_col]
@@ -1063,6 +1065,11 @@ with tab3:
                 res1_r  = 1 if t1_won else 0
                 diff_r  = abs(s1_r - s2_r)
                 # mult_r  = math.log(diff_r + 1)
+                settings = get_settings()
+
+                K = settings["K"] 
+                SCORE_FACTOR = settings["SCORE_FACTOR"]
+                
                 mult_r =  1.0 + SCORE_FACTOR * math.log(diff_r + 1)
                 d1_r    = K * mult_r * (res1_r - expected(e1_r, e2_r))
                 for p in t1_players:
