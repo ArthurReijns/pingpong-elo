@@ -720,8 +720,17 @@ with tab1:
     st.divider()
 
     st.subheader("📋 All Matches")
+    
+    matches_view = display_matches(
+        df.sort_values("wedstrijdId", ascending=False)
+    )
+    
+    # Move "Added by" to last column
+    cols = [c for c in matches_view.columns if c != "Added by"] + ["Added by"]
+    matches_view = matches_view[cols]
+    
     st.dataframe(
-        display_matches(df.sort_values("wedstrijdId", ascending=False)),
+        matches_view,
         use_container_width=True,
         hide_index=True
     )
@@ -1219,38 +1228,54 @@ with tab4:
                 ml = max(lost_to_count, key=lost_to_count.get)
                 st.markdown(f"###### 😰 Lost to most: **{ml}** ({lost_to_count[ml]}×)")
 
-        # ---- ELO charts (only own matches on x-axis) ----
-        if not player_hist.empty:
-            # Get match IDs this player actually played in
-            own_match_ids = set()
-            for _, row in df.iterrows():
-                if player in get_players(row, "Team1") + get_players(row, "Team2"):
-                    own_match_ids.add(row["wedstrijdId"])
-
-            own_hist = player_hist[player_hist["wedstrijdId"].isin(own_match_ids)].sort_values("wedstrijdId")
-
-            st.subheader("📈 ELO evolution (Overall)")
-            ov = own_hist.set_index("wedstrijdId")[["elo"]]
-            fixed_line_chart(ov, "Overall ELO per match played")
-
-            has_1v1 = own_hist["elo_1v1"].notna().any()
-            has_2v2 = own_hist["elo_2v2"].notna().any()
-
-            if has_1v1:
-                st.subheader("📈 ELO evolution (1v1)")
-                d1 = own_hist[own_hist["match_type"] == "1v1"].set_index("wedstrijdId")[["elo_1v1"]]
-                fixed_line_chart(d1, "1v1 ELO per match played")
-
-            if has_2v2:
-                st.subheader("📈 ELO evolution (2v2)")
-                d2 = own_hist[own_hist["match_type"] == "2v2"].set_index("wedstrijdId")[["elo_2v2"]]
-                fixed_line_chart(d2, "2v2 ELO per match played")
-
-            st.subheader("📅 ELO per date")
-            latest = (own_hist.sort_values("wedstrijdId")
-                      .groupby("datum").last().reset_index())
-            pivot_d = latest.set_index("datum")[["elo"]]
-            fixed_line_chart(pivot_d, "Overall ELO per date")
+    # ---- ELO charts (only own matches on x-axis) ----
+    if not player_hist.empty:
+    
+        # Get match IDs this player actually played in
+        own_match_ids = set()
+        for _, row in df.iterrows():
+            if player in get_players(row, "Team1") + get_players(row, "Team2"):
+                own_match_ids.add(row["wedstrijdId"])
+    
+        own_hist = (
+            player_hist[player_hist["wedstrijdId"].isin(own_match_ids)]
+            .sort_values("wedstrijdId")
+            .reset_index(drop=True)
+        )
+    
+        # personal match counter = 1,2,3,...
+        own_hist["player_match_id"] = range(1, len(own_hist) + 1)
+    
+        st.subheader("📈 ELO evolution (Overall)")
+        ov = own_hist.set_index("player_match_id")[["elo"]]
+        fixed_line_chart(ov, "Overall ELO per own match played")
+    
+        has_1v1 = (own_hist["match_type"] == "1v1").any()
+        has_2v2 = (own_hist["match_type"] == "2v2").any()
+    
+        if has_1v1:
+            st.subheader("📈 ELO evolution (1v1)")
+            d1 = own_hist[own_hist["match_type"] == "1v1"].copy()
+            d1["player_match_id"] = range(1, len(d1) + 1)
+            d1 = d1.set_index("player_match_id")[["elo_1v1"]]
+            fixed_line_chart(d1, "1v1 ELO per own 1v1 match played")
+    
+        if has_2v2:
+            st.subheader("📈 ELO evolution (2v2)")
+            d2 = own_hist[own_hist["match_type"] == "2v2"].copy()
+            d2["player_match_id"] = range(1, len(d2) + 1)
+            d2 = d2.set_index("player_match_id")[["elo_2v2"]]
+            fixed_line_chart(d2, "2v2 ELO per own 2v2 match played")
+    
+        st.subheader("📅 ELO per date")
+        latest = (
+            own_hist.sort_values("wedstrijdId")
+            .groupby("datum")
+            .last()
+            .reset_index()
+        )
+        pivot_d = latest.set_index("datum")[["elo"]]
+        fixed_line_chart(pivot_d, "Overall ELO per date")
 
         # ---- Match history table ----
         st.subheader("📋 All matches played")
@@ -1267,7 +1292,7 @@ with tab4:
 # =========================
 with tab5:
     st.subheader("🧠 1v1 Matchmaking — Closest ELO Pairs")
-    st.caption("Based on 1v1 ELO (or overall ELO if no 1v1 games yet)")
+    st.caption("Based on 1v1 ELO (or default ELO if no 1v1 games yet)")
 
     if not current_df.empty:
         mm1 = current_df.copy()
@@ -1302,7 +1327,7 @@ with tab5:
 with tab6:
     st.subheader("👥 2v2 Matchmaking — Balanced Teams")
     st.write("Showing all combinations where Team 1 has a **40–60% win chance** (sorted by balance)")
-    st.caption("Based on 2v2 ELO (or overall ELO if no 2v2 games yet)")
+    st.caption("Based on 2v2 ELO (or default ELO if no 2v2 games yet)")
 
     if not current_df.empty and len(current_df) >= 4:
         all_p   = current_df["speler"].tolist()
