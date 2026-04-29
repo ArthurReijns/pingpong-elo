@@ -739,13 +739,25 @@ with tab1:
 
     st.subheader("🗑️ Delete a Match")
     user_df = user_matches(df)
-
+    
     if user_df.empty:
         st.info("You have no matches to delete.")
     else:
         st.write("Your matches:")
-        st.dataframe(display_matches(user_df.sort_values("wedstrijdId", ascending=False)),
-                     use_container_width=True, hide_index=True)
+    
+        user_view = display_matches(
+            user_df.sort_values("wedstrijdId", ascending=False)
+        )
+    
+        # Move "Added by" to last column
+        cols = [c for c in user_view.columns if c != "Added by"] + ["Added by"]
+        user_view = user_view[cols]
+    
+        st.dataframe(
+            user_view,
+            use_container_width=True,
+            hide_index=True
+        )
 
         del_id    = st.selectbox("Select Match ID to delete",
                                  user_df.sort_values("wedstrijdId", ascending=False)["wedstrijdId"].tolist())
