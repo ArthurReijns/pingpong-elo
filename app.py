@@ -1070,7 +1070,7 @@ with tab3:
                     continue
                 for p in t1_players + t2_players:
                     if p not in elo_running:
-                        elo_running[p] = START_ELO
+                        elo_running[p] = get_settings()["START_ELO"]
                 e1_r    = sum(elo_running[p] for p in t1_players) / len(t1_players)
                 e2_r    = sum(elo_running[p] for p in t2_players) / len(t2_players)
                 prob_t1 = expected(e1_r, e2_r)
