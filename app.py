@@ -885,6 +885,11 @@ with tab2:
     
     df_month = df.copy()
     df_month["datum"] = pd.to_datetime(df_month["datum"])
+
+    df_month = df_month[
+    (df_month["datum"] >= start_month) &
+    (df_month["datum"] <= end_month)
+    ]
     
     # -------------------------
     # VIEW FILTER (IMPORTANT FIX)
